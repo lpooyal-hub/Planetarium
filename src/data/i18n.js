@@ -73,7 +73,8 @@ export const translations = {
     },
     viewer: {
       eyebrow: "3D planetarium",
-      title: "A calm night sky you can watch, trace, and return to.",
+      title: "A quiet night sky with constellations resting inside it.",
+      subtitle: "Let the sky stay simple, then bring a constellation forward when you want to recognize it.",
       observer: "Observer",
       pageMode: "Page mode",
       pages: {
@@ -82,6 +83,9 @@ export const translations = {
       },
       controls: "Viewer controls",
       sketchControls: "Sketch controls",
+      tonightMood: "Tonight's story",
+      constellationFocus: "Constellation focus",
+      atmosphere: "Sky atmosphere",
       latitude: "Latitude",
       longitude: "Longitude",
       observedAt: "Observed at",
@@ -96,6 +100,11 @@ export const translations = {
       visibleStars: "Visible stars",
       visibleConstellations: "Visible constellations",
       loading: "Generating the sky scene...",
+      timeJump: {
+        back: "-3 hours",
+        tonight: "Tonight 21:00",
+        forward: "+3 hours"
+      },
       toggles: {
         labels: "Labels",
         constellations: "Constellation lines",
@@ -120,6 +129,7 @@ export const translations = {
       noSavedSketches: "No saved sketches yet.",
       deleteSketch: "Delete",
       sketchHint: "Turn sketch mode on, then click stars in order to connect your own pattern.",
+      constellationFallback: "The sky does not need to explain everything tonight. Let one shape come forward and the rest can stay soft.",
       allSky: "All sky",
       quickFocus: "Quick focus",
       sketchTips: "Sketch tips",
@@ -129,8 +139,7 @@ export const translations = {
         save: "Save the pattern when it starts to feel right."
       },
       overlay: {
-        horizon: "Horizon ring with cardinal directions",
-        motion: "Slow drifting motion across the night sky",
+        mood: "A calm sky with brighter constellations resting over the background stars",
         inspect: "Click stars and planets to inspect them",
         draw: "Sketch mode records stars in the order you click"
       },
@@ -153,6 +162,48 @@ export const translations = {
         east: { en: "East", ko: "동" },
         south: { en: "South", ko: "남" },
         west: { en: "West", ko: "서" }
+      },
+      constellationMoods: {
+        Orion: {
+          en: "Orion feels like a winter lantern. Even when the rest of the sky is busy, those three belt stars gather your attention gently.",
+          ko: "오리온자리는 겨울밤의 등불처럼 느껴집니다. 하늘이 복잡해 보여도 허리띠 세 별이 시선을 차분히 모아줍니다."
+        },
+        Taurus: {
+          en: "Taurus arrives with a grounded kind of brightness, as if the sky decided to slow down and hold still for a moment.",
+          ko: "황소자리는 단단한 밝음으로 다가옵니다. 하늘이 잠깐 멈춰 서서 숨을 고르는 느낌을 줍니다."
+        },
+        Gemini: {
+          en: "Gemini has a companionable rhythm. Two bright anchors, then a softer trail between them, like a conversation that does not rush.",
+          ko: "쌍둥이자리는 함께 걷는 리듬이 있습니다. 두 개의 밝은 기준점과 그 사이의 부드러운 흐름이 서두르지 않는 대화처럼 이어집니다."
+        },
+        Leo: {
+          en: "Leo shapes itself with a confident curve. It is easy to find once the sky gives you that first bright point to follow.",
+          ko: "사자자리는 자신감 있는 곡선으로 잡힙니다. 처음 한 점만 눈에 들어오면 그 뒤는 하늘이 스스로 이어줍니다."
+        },
+        Virgo: {
+          en: "Virgo spreads wider than you expect, quiet and patient. It rewards slower looking rather than the first glance.",
+          ko: "처녀자리는 생각보다 넓게 퍼져 있고 조용하며 인내심이 있습니다. 첫눈보다 천천히 바라볼 때 더 잘 드러납니다."
+        },
+        Scorpius: {
+          en: "Scorpius has a flowing body line, almost like handwriting across the sky. Once it appears, the surrounding stars feel calmer.",
+          ko: "전갈자리는 하늘에 손글씨를 쓰듯 몸선이 흘러갑니다. 한번 보이기 시작하면 주변의 별들도 더 차분하게 정리됩니다."
+        },
+        Cygnus: {
+          en: "Cygnus opens like a gliding wing. It gives the sky a gentle structure without taking away the feeling of open space.",
+          ko: "백조자리는 미끄러지듯 펼쳐진 날개 같습니다. 넓은 하늘의 여백은 남겨두면서도 부드러운 구조를 만들어 줍니다."
+        },
+        Lyra: {
+          en: "Lyra is compact and clear, like a bell tone in the dark. Small enough to feel intimate, bright enough to return to easily.",
+          ko: "거문고자리는 어둠 속 종소리처럼 작고 또렷합니다. 친밀하게 느껴질 만큼 작고, 다시 찾기 쉬울 만큼 밝습니다."
+        },
+        Aquila: {
+          en: "Aquila runs straight through the dark with a steadier energy. It helps the sky feel directional without becoming rigid.",
+          ko: "독수리자리는 어둠을 가로질러 곧게 흐르며 하늘에 방향감을 줍니다. 그렇다고 딱딱해지지는 않고 여전히 부드럽습니다."
+        },
+        "Ursa Major": {
+          en: "Ursa Major is familiar in the best way. It does not ask much of you, only that you look up and let recognition arrive.",
+          ko: "큰곰자리는 좋은 의미로 익숙합니다. 무언가를 요구하기보다, 올려다보는 순간 자연스럽게 알아볼 수 있게 해줍니다."
+        }
       }
     },
     constellations: {
@@ -264,7 +315,8 @@ export const translations = {
     },
     viewer: {
       eyebrow: "3D 플라네타리움",
-      title: "가만히 바라보고, 선을 잇고, 다시 찾아올 수 있는 밤하늘입니다.",
+      title: "밤하늘 안에 별자리가 조용히 놓여 있는 장면입니다.",
+      subtitle: "하늘은 단순하게 두고, 알아보고 싶은 별자리만 천천히 앞으로 꺼내 보세요.",
       observer: "관측자",
       pageMode: "페이지 모드",
       pages: {
@@ -273,6 +325,9 @@ export const translations = {
       },
       controls: "뷰어 제어",
       sketchControls: "스케치 제어",
+      tonightMood: "오늘 밤의 분위기",
+      constellationFocus: "별자리 초점",
+      atmosphere: "하늘 분위기",
       latitude: "위도",
       longitude: "경도",
       observedAt: "관측 시각",
@@ -287,6 +342,11 @@ export const translations = {
       visibleStars: "보이는 별",
       visibleConstellations: "보이는 별자리",
       loading: "하늘 장면을 생성하는 중입니다...",
+      timeJump: {
+        back: "-3시간",
+        tonight: "오늘 밤 21:00",
+        forward: "+3시간"
+      },
       toggles: {
         labels: "이름 라벨",
         constellations: "별자리 선",
@@ -311,6 +371,7 @@ export const translations = {
       noSavedSketches: "아직 저장한 스케치가 없습니다.",
       deleteSketch: "삭제",
       sketchHint: "스케치 모드를 켠 뒤 별을 순서대로 눌러 나만의 별자리 선을 그려보세요.",
+      constellationFallback: "오늘 밤 하늘이 모든 걸 설명할 필요는 없습니다. 한 개의 모양만 또렷하게 보고, 나머지는 부드럽게 흘려두어도 괜찮습니다.",
       allSky: "전체 하늘",
       quickFocus: "빠른 강조",
       sketchTips: "스케치 팁",
@@ -320,8 +381,7 @@ export const translations = {
         save: "마음에 드는 흐름이 나오면 저장하세요."
       },
       overlay: {
-        horizon: "방위 표시가 붙은 지평선 링",
-        motion: "천천히 흘러가는 밤하늘 움직임",
+        mood: "배경별 위에 별자리가 조금 더 또렷하게 떠오르는 차분한 밤하늘",
         inspect: "별과 행성을 눌러 상세 정보를 확인",
         draw: "스케치 모드에서는 클릭한 순서대로 별이 이어집니다"
       },
@@ -344,6 +404,48 @@ export const translations = {
         east: { en: "East", ko: "동" },
         south: { en: "South", ko: "남" },
         west: { en: "West", ko: "서" }
+      },
+      constellationMoods: {
+        Orion: {
+          en: "Orion feels like a winter lantern. Even when the rest of the sky is busy, those three belt stars gather your attention gently.",
+          ko: "오리온자리는 겨울밤의 등불처럼 느껴집니다. 하늘이 복잡해 보여도 허리띠 세 별이 시선을 차분히 모아줍니다."
+        },
+        Taurus: {
+          en: "Taurus arrives with a grounded kind of brightness, as if the sky decided to slow down and hold still for a moment.",
+          ko: "황소자리는 단단한 밝음으로 다가옵니다. 하늘이 잠깐 멈춰 서서 숨을 고르는 느낌을 줍니다."
+        },
+        Gemini: {
+          en: "Gemini has a companionable rhythm. Two bright anchors, then a softer trail between them, like a conversation that does not rush.",
+          ko: "쌍둥이자리는 함께 걷는 리듬이 있습니다. 두 개의 밝은 기준점과 그 사이의 부드러운 흐름이 서두르지 않는 대화처럼 이어집니다."
+        },
+        Leo: {
+          en: "Leo shapes itself with a confident curve. It is easy to find once the sky gives you that first bright point to follow.",
+          ko: "사자자리는 자신감 있는 곡선으로 잡힙니다. 처음 한 점만 눈에 들어오면 그 뒤는 하늘이 스스로 이어줍니다."
+        },
+        Virgo: {
+          en: "Virgo spreads wider than you expect, quiet and patient. It rewards slower looking rather than the first glance.",
+          ko: "처녀자리는 생각보다 넓게 퍼져 있고 조용하며 인내심이 있습니다. 첫눈보다 천천히 바라볼 때 더 잘 드러납니다."
+        },
+        Scorpius: {
+          en: "Scorpius has a flowing body line, almost like handwriting across the sky. Once it appears, the surrounding stars feel calmer.",
+          ko: "전갈자리는 하늘에 손글씨를 쓰듯 몸선이 흘러갑니다. 한번 보이기 시작하면 주변의 별들도 더 차분하게 정리됩니다."
+        },
+        Cygnus: {
+          en: "Cygnus opens like a gliding wing. It gives the sky a gentle structure without taking away the feeling of open space.",
+          ko: "백조자리는 미끄러지듯 펼쳐진 날개 같습니다. 넓은 하늘의 여백은 남겨두면서도 부드러운 구조를 만들어 줍니다."
+        },
+        Lyra: {
+          en: "Lyra is compact and clear, like a bell tone in the dark. Small enough to feel intimate, bright enough to return to easily.",
+          ko: "거문고자리는 어둠 속 종소리처럼 작고 또렷합니다. 친밀하게 느껴질 만큼 작고, 다시 찾기 쉬울 만큼 밝습니다."
+        },
+        Aquila: {
+          en: "Aquila runs straight through the dark with a steadier energy. It helps the sky feel directional without becoming rigid.",
+          ko: "독수리자리는 어둠을 가로질러 곧게 흐르며 하늘에 방향감을 줍니다. 그렇다고 딱딱해지지는 않고 여전히 부드럽습니다."
+        },
+        "Ursa Major": {
+          en: "Ursa Major is familiar in the best way. It does not ask much of you, only that you look up and let recognition arrive.",
+          ko: "큰곰자리는 좋은 의미로 익숙합니다. 무언가를 요구하기보다, 올려다보는 순간 자연스럽게 알아볼 수 있게 해줍니다."
+        }
       }
     },
     constellations: {

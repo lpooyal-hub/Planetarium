@@ -83,81 +83,102 @@ function SceneContents({
   const cameraAnchor = useRef({ x: 0, y: 0 });
   const { camera, pointer } = useThree();
 
+  const featuredStars = useMemo(
+    () =>
+      scene.stars.filter((star) => {
+        if (!star.visible) {
+          return false;
+        }
+        if (customSketchStarIds.includes(star.id)) {
+          return true;
+        }
+        if (selectedTarget?.kind === "star" && selectedTarget.id === star.id) {
+          return true;
+        }
+        if (focusedConstellation !== "all") {
+          return star.constellation === focusedConstellation;
+        }
+        return star.magnitude <= 2.35;
+      }),
+    [customSketchStarIds, focusedConstellation, scene.stars, selectedTarget]
+  );
+
+  const constellationCenters = useMemo(() => buildConstellationCenters(scene.stars), [scene.stars]);
   const labelData = useMemo(() => {
-    const visibleBrightStars = scene.stars
-      .filter((star) => star.visible && isHighlighted(star.constellation, focusedConstellation))
-      .sort((left, right) => left.magnitude - right.magnitude)
-      .slice(0, 8)
-      .map((star) => ({
-        id: `star-${star.id}`,
-        text: star.name,
-        position: [star.x, star.y + 0.52, star.z],
-        color: "#dfe9ff",
-        scale: 1.9
-      }));
+    const starLabels = [];
+    const constellationLabels = [];
 
-    const constellationPoints = new Map();
-    scene.stars.forEach((star) => {
-      if (!star.visible) {
-        return;
+    if (showLabels) {
+      featuredStars
+        .slice()
+        .sort((left, right) => left.magnitude - right.magnitude)
+        .slice(0, focusedConstellation === "all" ? 5 : 8)
+        .forEach((star) => {
+          starLabels.push({
+            id: `star-${star.id}`,
+            text: star.name,
+            position: [star.x, star.y + 0.48, star.z],
+            color: "#eef4ff",
+            scale: 1.8
+          });
+        });
+
+      if (showConstellations) {
+        const names = focusedConstellation === "all" ? [...constellationCenters.keys()].slice(0, 4) : [focusedConstellation];
+        names.forEach((name) => {
+          const center = constellationCenters.get(name);
+          if (!center) {
+            return;
+          }
+          constellationLabels.push({
+            id: `constellation-${name}`,
+            text: dictionary.constellations?.[name]?.[language] || name,
+            position: [center.x, center.y + 0.95, center.z],
+            color: name === focusedConstellation ? "#ffcf70" : "#7fdbc9",
+            scale: name === focusedConstellation ? 2.4 : 2.05
+          });
+        });
       }
+    }
 
-      const current = constellationPoints.get(star.constellation) || { x: 0, y: 0, z: 0, count: 0 };
-      constellationPoints.set(star.constellation, {
-        x: current.x + star.x,
-        y: current.y + star.y,
-        z: current.z + star.z,
-        count: current.count + 1
-      });
-    });
-
-    const constellationLabels = [...constellationPoints.entries()].map(([name, point]) => ({
-      id: `constellation-${name}`,
-      text: dictionary.constellations?.[name]?.[language] || name,
-      position: [point.x / point.count, point.y / point.count + 1.05, point.z / point.count],
-      color: "#7fdbc9",
-      scale: 2.3
-    }));
-
-    return {
-      starLabels: visibleBrightStars,
-      constellationLabels
-    };
-  }, [dictionary.constellations, focusedConstellation, language, scene.stars]);
+    return { starLabels, constellationLabels };
+  }, [constellationCenters, dictionary.constellations, featuredStars, focusedConstellation, language, showConstellations, showLabels]);
 
   useFrame((_, delta) => {
     if (groupRef.current) {
       if (autoRotate) {
-        groupRef.current.rotation.y += delta * 0.03;
+        groupRef.current.rotation.y += delta * 0.022;
       }
-      groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, -pointer.y * 0.18, 0.04);
-      cameraAnchor.current.x = THREE.MathUtils.lerp(cameraAnchor.current.x, pointer.x * 1.8, 0.04);
-      cameraAnchor.current.y = THREE.MathUtils.lerp(cameraAnchor.current.y, pointer.y * 0.9, 0.04);
+      groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, -pointer.y * 0.12, 0.035);
+      cameraAnchor.current.x = THREE.MathUtils.lerp(cameraAnchor.current.x, pointer.x * 1.35, 0.035);
+      cameraAnchor.current.y = THREE.MathUtils.lerp(cameraAnchor.current.y, pointer.y * 0.65, 0.035);
     }
 
-    camera.position.x = THREE.MathUtils.lerp(camera.position.x, cameraAnchor.current.x, 0.04);
-    camera.position.y = THREE.MathUtils.lerp(camera.position.y, cameraAnchor.current.y, 0.04);
-    camera.lookAt(0, 0.5, 0);
+    camera.position.x = THREE.MathUtils.lerp(camera.position.x, cameraAnchor.current.x, 0.035);
+    camera.position.y = THREE.MathUtils.lerp(camera.position.y, cameraAnchor.current.y, 0.035);
+    camera.lookAt(0, 0.15, 0);
   });
 
   return (
     <>
-      <ambientLight intensity={0.35} />
-      <pointLight position={[0, 4, 12]} intensity={1.05} color="#bcd6ff" />
-      <pointLight position={[0, -6, -10]} intensity={0.44} color="#ffb36b" />
+      <ambientLight intensity={0.38} />
+      <pointLight position={[0, 6, 14]} intensity={0.9} color="#b8d2ff" />
+      <pointLight position={[-12, -4, -8]} intensity={0.25} color="#ffbf8a" />
       <group ref={groupRef}>
+        <MilkyWayBand />
         <DeepSkyField />
+        <BackgroundStarField stars={scene.stars} focusedConstellation={focusedConstellation} />
         {showGuides ? <GuideGrid /> : null}
         {showGuides ? <HorizonRing dictionary={dictionary} language={language} /> : null}
         {showConstellations ? <ConstellationLines lines={scene.lines} stars={scene.stars} focusedConstellation={focusedConstellation} /> : null}
         {customSketchStarIds.length >= 2 ? <CustomSketchLines stars={scene.stars} starIds={customSketchStarIds} /> : null}
-        {scene.stars.map((star) => (
+        {featuredStars.map((star) => (
           <StarMarker
             key={star.id}
             star={star}
             selected={selectedTarget?.kind === "star" && star.id === selectedTarget.id}
             onSelectTarget={onSelectTarget}
-            dimmed={!isHighlighted(star.constellation, focusedConstellation)}
+            dimmed={focusedConstellation !== "all" && star.constellation !== focusedConstellation}
             sketched={customSketchStarIds.includes(star.id)}
             drawMode={drawMode}
           />
@@ -168,19 +189,18 @@ function SceneContents({
                 key={planet.name}
                 planet={planet}
                 index={index}
-                language={language}
                 selected={selectedTarget?.kind === "planet" && planet.name === selectedTarget.id}
                 onSelectTarget={onSelectTarget}
                 dimmed={focusedConstellation !== "all"}
               />
             ))
           : null}
-        {showLabels
-          ? labelData.starLabels.map((label) => <TextSprite key={label.id} {...label} />)
-          : null}
-        {showLabels && showConstellations
-          ? labelData.constellationLabels.map((label) => <TextSprite key={label.id} {...label} />)
-          : null}
+        {labelData.starLabels.map((label) => (
+          <TextSprite key={label.id} {...label} />
+        ))}
+        {labelData.constellationLabels.map((label) => (
+          <TextSprite key={label.id} {...label} />
+        ))}
         {showLabels && showPlanets
           ? planets.map((planet, index) => (
               <TextSprite
@@ -188,13 +208,84 @@ function SceneContents({
                 text={dictionary.planetNames?.[planet.name] || planet.name}
                 position={planetPosition(index, planet.orbit, true)}
                 color={planet.color}
-                scale={2}
+                scale={1.9}
               />
             ))
           : null}
       </group>
     </>
   );
+}
+
+function BackgroundStarField({ stars, focusedConstellation }) {
+  const geometry = useMemo(() => {
+    const positions = [];
+    const colors = [];
+    const sizes = [];
+    const alphas = [];
+
+    stars.forEach((star) => {
+      if (!star.visible) {
+        return;
+      }
+
+      positions.push(star.x, star.y, star.z);
+
+      const color = new THREE.Color(star.color);
+      colors.push(color.r, color.g, color.b);
+
+      const highlighted = focusedConstellation !== "all" && star.constellation === focusedConstellation;
+      sizes.push(clampStarSize(star.magnitude) * (highlighted ? 1.45 : 1));
+
+      const baseAlpha = focusedConstellation === "all" ? 0.26 : highlighted ? 0.62 : 0.07;
+      alphas.push(baseAlpha + Math.max(0, 0.16 - star.magnitude * 0.012));
+    });
+
+    const starGeometry = new THREE.BufferGeometry();
+    starGeometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    starGeometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+    starGeometry.setAttribute("size", new THREE.Float32BufferAttribute(sizes, 1));
+    starGeometry.setAttribute("alpha", new THREE.Float32BufferAttribute(alphas, 1));
+    return starGeometry;
+  }, [focusedConstellation, stars]);
+
+  const material = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        uniforms: { scale: { value: window.devicePixelRatio || 1 } },
+        vertexShader: `
+          attribute float size;
+          attribute float alpha;
+          varying vec3 vColor;
+          varying float vAlpha;
+          void main() {
+            vColor = color;
+            vAlpha = alpha;
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            gl_PointSize = size * (220.0 / max(8.0, -mvPosition.z));
+            gl_Position = projectionMatrix * mvPosition;
+          }
+        `,
+        fragmentShader: `
+          varying vec3 vColor;
+          varying float vAlpha;
+          void main() {
+            vec2 coord = gl_PointCoord - vec2(0.5);
+            float dist = length(coord);
+            float glow = smoothstep(0.52, 0.0, dist);
+            float core = smoothstep(0.18, 0.0, dist);
+            gl_FragColor = vec4(vColor * (0.55 + core * 1.6), (glow * 0.55 + core * 0.7) * vAlpha);
+          }
+        `,
+        vertexColors: true
+      }),
+    []
+  );
+
+  return <points geometry={geometry} material={material} frustumCulled={false} />;
 }
 
 function StarMarker({ star, selected, onSelectTarget, dimmed, sketched, drawMode }) {
@@ -208,9 +299,9 @@ function StarMarker({ star, selected, onSelectTarget, dimmed, sketched, drawMode
       }),
     [drawMode, sketched, star.color]
   );
-  const radius = star.size * (selected ? 1.9 : sketched ? 1.5 : dimmed ? 0.9 : 1.2);
+  const radius = star.size * (selected ? 2.35 : sketched ? 1.85 : dimmed ? 1.05 : 1.55);
   const emissive = star.visible ? star.color : "#334155";
-  const opacity = sketched ? 1 : dimmed ? 0.18 : 1;
+  const opacity = sketched ? 1 : dimmed ? 0.34 : 1;
   const pulseSeed = useMemo(() => Number.parseInt(String(star.id).replace(/\D/g, "").slice(-4) || "7", 10) * 0.013, [star.id]);
 
   useFrame(({ clock }) => {
@@ -218,23 +309,23 @@ function StarMarker({ star, selected, onSelectTarget, dimmed, sketched, drawMode
       return;
     }
 
-    const pulse = 1 + Math.sin(clock.elapsedTime * 1.35 + pulseSeed) * 0.12;
+    const pulse = 1 + Math.sin(clock.elapsedTime * 1.1 + pulseSeed) * 0.08;
     haloRef.current.scale.setScalar(pulse);
-    haloRef.current.material.opacity = (sketched ? 0.24 : 0.14) + (selected ? 0.1 : 0) + Math.sin(clock.elapsedTime * 1.1 + pulseSeed) * 0.03;
+    haloRef.current.material.opacity = (sketched ? 0.3 : 0.16) + (selected ? 0.12 : 0) + Math.sin(clock.elapsedTime * 0.9 + pulseSeed) * 0.025;
   });
 
   return (
     <group position={[star.x, star.y, star.z]}>
       {selected || sketched ? (
         <mesh>
-          <sphereGeometry args={[radius * 2.6, 24, 24]} />
-          <meshBasicMaterial color={sketched ? "#ffcf70" : star.color} transparent opacity={sketched ? 0.18 : 0.12} />
+          <sphereGeometry args={[radius * 2.9, 24, 24]} />
+          <meshBasicMaterial color={sketched ? "#ffcf70" : star.color} transparent opacity={sketched ? 0.2 : 0.13} />
         </mesh>
       ) : null}
-      <sprite ref={haloRef} material={spriteMaterial} scale={[radius * 5.8, radius * 5.8, 1]} />
+      <sprite ref={haloRef} material={spriteMaterial} scale={[radius * 6.5, radius * 6.5, 1]} />
       <mesh onClick={() => onSelectTarget({ kind: "star", id: star.id })}>
         <sphereGeometry args={[radius * 1.15, 12, 12]} />
-        <meshBasicMaterial color={emissive} toneMapped={false} transparent opacity={Math.max(opacity * 0.02, 0.01)} depthWrite={false} />
+        <meshBasicMaterial color={emissive} toneMapped={false} transparent opacity={Math.max(opacity * 0.035, 0.015)} depthWrite={false} />
       </mesh>
     </group>
   );
@@ -320,12 +411,17 @@ function ConstellationLines({ lines, stars, focusedConstellation }) {
   return (
     <>
       <lineSegments geometry={geometry.lineGeometry}>
-        <lineBasicMaterial color="#79d9cf" transparent opacity={focusedConstellation === "all" ? 0.42 : 0.12} />
+        <lineBasicMaterial color="#7adcd4" transparent opacity={focusedConstellation === "all" ? 0.24 : 0.08} />
       </lineSegments>
       {focusedConstellation !== "all" ? (
-        <lineSegments geometry={geometry.highlightGeometry}>
-          <lineBasicMaterial color="#ffcf70" transparent opacity={0.9} />
-        </lineSegments>
+        <>
+          <lineSegments geometry={geometry.highlightGeometry}>
+            <lineBasicMaterial color="#ffcf70" transparent opacity={0.95} />
+          </lineSegments>
+          <lineSegments geometry={geometry.highlightGeometry}>
+            <lineBasicMaterial color="#fff5c8" transparent opacity={0.34} />
+          </lineSegments>
+        </>
       ) : null}
     </>
   );
@@ -357,6 +453,37 @@ function CustomSketchLines({ stars, starIds }) {
       <lineBasicMaterial color="#ffcf70" transparent opacity={0.95} />
     </lineSegments>
   );
+}
+
+function buildConstellationCenters(stars) {
+  const centers = new Map();
+
+  stars.forEach((star) => {
+    if (!star.visible || star.constellation === "Unknown") {
+      return;
+    }
+    const current = centers.get(star.constellation) || { x: 0, y: 0, z: 0, count: 0 };
+    centers.set(star.constellation, {
+      x: current.x + star.x,
+      y: current.y + star.y,
+      z: current.z + star.z,
+      count: current.count + 1
+    });
+  });
+
+  for (const [name, point] of centers.entries()) {
+    centers.set(name, {
+      x: point.x / point.count,
+      y: point.y / point.count,
+      z: point.z / point.count
+    });
+  }
+
+  return centers;
+}
+
+function clampStarSize(magnitude) {
+  return Math.max(1.2, 5.2 - magnitude * 0.58);
 }
 
 function HorizonRing({ dictionary, language }) {
@@ -432,12 +559,47 @@ function GuideGrid() {
   );
 }
 
+function MilkyWayBand() {
+  const particles = useMemo(() => {
+    const positions = [];
+    const colors = [];
+    const sizes = [];
+
+    for (let index = 0; index < 1200; index += 1) {
+      const spread = (Math.random() - 0.5) * 18;
+      const arc = (Math.random() - 0.5) * 8;
+      const depth = -8 + Math.random() * 14;
+      const x = spread;
+      const y = 2.6 + Math.sin(spread * 0.16) * 1.4 + arc * 0.18;
+      const z = depth + Math.cos(spread * 0.11) * 1.6;
+
+      positions.push(x, y, z);
+
+      const color = new THREE.Color(index % 6 === 0 ? "#a7c7ff" : index % 9 === 0 ? "#ffe0b5" : "#d7e4ff");
+      colors.push(color.r, color.g, color.b);
+      sizes.push(2.8 + Math.random() * 3.6);
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+    geometry.setAttribute("size", new THREE.Float32BufferAttribute(sizes, 1));
+    return geometry;
+  }, []);
+
+  return (
+    <points geometry={particles} rotation={[-0.18, 0.32, 0.15]}>
+      <pointsMaterial size={0.11} sizeAttenuation vertexColors transparent opacity={0.16} depthWrite={false} />
+    </points>
+  );
+}
+
 function DeepSkyField() {
   const particles = useMemo(() => {
     const positions = [];
     const colors = [];
 
-    for (let index = 0; index < 1800; index += 1) {
+    for (let index = 0; index < 2600; index += 1) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.random() * Math.PI * 0.58;
       const radius = 12 + Math.random() * 18;
@@ -459,7 +621,7 @@ function DeepSkyField() {
 
   return (
     <points geometry={particles}>
-      <pointsMaterial size={0.095} sizeAttenuation vertexColors transparent opacity={0.58} depthWrite={false} />
+      <pointsMaterial size={0.085} sizeAttenuation vertexColors transparent opacity={0.42} depthWrite={false} />
     </points>
   );
 }
@@ -475,9 +637,9 @@ function TextSprite({ text, position, color, scale = 2 }) {
     context.font = "700 44px Inter, sans-serif";
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.fillStyle = "rgba(2, 4, 10, 0.72)";
+    context.fillStyle = "rgba(2, 4, 10, 0.82)";
     context.fillRect(48, 26, 416, 76);
-    context.strokeStyle = "rgba(236, 243, 255, 0.16)";
+    context.strokeStyle = "rgba(236, 243, 255, 0.2)";
     context.lineWidth = 2;
     context.strokeRect(48, 26, 416, 76);
     context.fillStyle = color;
@@ -490,8 +652,4 @@ function TextSprite({ text, position, color, scale = 2 }) {
   }, [color, text]);
 
   return <sprite material={sprite} position={position} scale={[scale * 1.4, scale * 0.35, 1]} />;
-}
-
-function isHighlighted(constellation, focusedConstellation) {
-  return focusedConstellation === "all" || constellation === focusedConstellation;
 }

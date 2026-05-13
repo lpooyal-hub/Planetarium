@@ -56,6 +56,9 @@ export const translations = {
       title: "Select a zodiac sign to draw its constellation.",
       body:
         "The constellation layer uses recognizable simplified star patterns, bright-star labels, and approximate sky positions for visibility calculations.",
+      realPhoto: "Real night sky photograph",
+      imageCredit: "Photo credit",
+      imageLicense: "License",
       season: "Sun sign date",
       brightStar: "Bright star"
     },
@@ -141,6 +144,9 @@ export const translations = {
       title: "별자리를 선택하면 하늘에 별자리 패턴이 그려집니다.",
       body:
         "별자리 레이어는 알아보기 쉬운 대표 별 연결선, 밝은 별 이름, 위치 기반 관측 계산을 위한 대략적인 하늘 좌표를 사용합니다.",
+      realPhoto: "실제 밤하늘 촬영 사진",
+      imageCredit: "사진 출처",
+      imageLicense: "라이선스",
       season: "태양궁 기간",
       brightStar: "대표 별"
     },

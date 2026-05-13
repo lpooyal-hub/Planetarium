@@ -45,6 +45,26 @@ Frontend URL:
 http://127.0.0.1:5173
 ```
 
+## Docker
+
+Run the frontend and backend together:
+
+```bash
+docker compose up --build
+```
+
+App URL:
+
+```text
+http://localhost:5173
+```
+
+API health check:
+
+```text
+http://localhost:8000/api/health
+```
+
 ## Backend
 
 ```bash

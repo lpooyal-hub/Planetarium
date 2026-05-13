@@ -316,8 +316,21 @@ function ZodiacSection({ dictionary, language, activeZodiac, setActiveZodiac }) 
         <p>{dictionary.zodiac.body}</p>
       </div>
       <article className="zodiac-feature">
-        <span className="zodiac-glyph large">{glyphs[activeZodiac.id]}</span>
-        <div>
+        <figure className="zodiac-photo">
+          <img
+            src={activeZodiac.photo.imageUrl}
+            alt={`${activeZodiac.name[language]} ${dictionary.zodiac.realPhoto}`}
+            loading="lazy"
+          />
+          <figcaption>
+            <span>{dictionary.zodiac.realPhoto}</span>
+            <a href={activeZodiac.photo.sourceUrl} target="_blank" rel="noreferrer">
+              {dictionary.zodiac.imageCredit}: {activeZodiac.photo.credit}
+            </a>
+          </figcaption>
+        </figure>
+        <div className="zodiac-feature-copy">
+          <span className="zodiac-glyph large">{glyphs[activeZodiac.id]}</span>
           <p className="panel-label">{dictionary.zodiac.season}</p>
           <h3>{activeZodiac.name[language]}</h3>
           <p>{activeZodiac.story[language]}</p>
@@ -331,6 +344,9 @@ function ZodiacSection({ dictionary, language, activeZodiac, setActiveZodiac }) 
               <dd>{activeZodiac.brightStar[language]}</dd>
             </div>
           </dl>
+          <a className="source-link" href={activeZodiac.photo.sourceUrl} target="_blank" rel="noreferrer">
+            {dictionary.zodiac.imageLicense}: {activeZodiac.photo.license}
+          </a>
         </div>
       </article>
       <div className="zodiac-grid">

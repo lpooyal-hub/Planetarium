@@ -73,12 +73,12 @@ export const translations = {
     },
     viewer: {
       eyebrow: "3D planetarium",
-      title: "Read the sky as a labeled 3D dome instead of a cloud of anonymous points.",
+      title: "A calm night sky you can watch, trace, and return to.",
       observer: "Observer",
       pageMode: "Page mode",
       pages: {
-        watch: "Stargaze",
-        sketch: "Sketch"
+        watch: "Night Sky",
+        sketch: "Sketch Sky"
       },
       controls: "Viewer controls",
       sketchControls: "Sketch controls",
@@ -130,7 +130,7 @@ export const translations = {
       },
       overlay: {
         horizon: "Horizon ring with cardinal directions",
-        motion: "Mouse parallax and rotating dome",
+        motion: "Slow drifting motion across the night sky",
         inspect: "Click stars and planets to inspect them",
         draw: "Sketch mode records stars in the order you click"
       },
@@ -264,12 +264,12 @@ export const translations = {
     },
     viewer: {
       eyebrow: "3D 플라네타리움",
-      title: "이름 모를 점 구름이 아니라, 식별 가능한 하늘을 3D 돔으로 읽어보세요.",
+      title: "가만히 바라보고, 선을 잇고, 다시 찾아올 수 있는 밤하늘입니다.",
       observer: "관측자",
       pageMode: "페이지 모드",
       pages: {
-        watch: "별멍",
-        sketch: "스케치"
+        watch: "밤하늘 감상",
+        sketch: "밤하늘 그리기"
       },
       controls: "뷰어 제어",
       sketchControls: "스케치 제어",
@@ -321,7 +321,7 @@ export const translations = {
       },
       overlay: {
         horizon: "방위 표시가 붙은 지평선 링",
-        motion: "마우스 시차와 회전하는 하늘 돔",
+        motion: "천천히 흘러가는 밤하늘 움직임",
         inspect: "별과 행성을 눌러 상세 정보를 확인",
         draw: "스케치 모드에서는 클릭한 순서대로 별이 이어집니다"
       },

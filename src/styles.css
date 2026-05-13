@@ -368,15 +368,15 @@ input[type="range"] {
   padding: 8px 12px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--muted);
+  background: rgba(6, 12, 22, 0.92);
+  color: #dfe8ff;
   cursor: pointer;
 }
 
 .focus-chip.is-active {
-  border-color: rgba(255, 207, 112, 0.55);
-  background: rgba(255, 207, 112, 0.12);
-  color: var(--text);
+  border-color: rgba(255, 207, 112, 0.72);
+  background: rgba(255, 207, 112, 0.22);
+  color: #fff4d4;
 }
 
 .saved-sketch-list {

@@ -42,7 +42,7 @@ export function PlanetariumCanvas({
   return (
     <Canvas camera={{ position: [0, 0, 18], fov: 48 }} dpr={[1, 2]}>
       <color attach="background" args={["#010208"]} />
-      <fog attach="fog" args={["#010208", 16, 36]} />
+      <fog attach="fog" args={["#010208", 22, 44]} />
       <SceneContents
         scene={scene}
         planets={planets}
@@ -147,7 +147,6 @@ function SceneContents({
       <pointLight position={[0, -6, -10]} intensity={0.44} color="#ffb36b" />
       <group ref={groupRef}>
         <DeepSkyField />
-        <StarDome />
         {showGuides ? <GuideGrid /> : null}
         {showGuides ? <HorizonRing dictionary={dictionary} language={language} /> : null}
         {showConstellations ? <ConstellationLines lines={scene.lines} stars={scene.stars} focusedConstellation={focusedConstellation} /> : null}
@@ -430,15 +429,6 @@ function GuideGrid() {
         <lineBasicMaterial color="#80a3c8" transparent opacity={0.12} />
       </lineSegments>
     </>
-  );
-}
-
-function StarDome() {
-  return (
-    <mesh rotation={[0, 0, 0]}>
-      <sphereGeometry args={[10.25, 36, 24, 0, Math.PI * 2, 0, Math.PI / 2]} />
-      <meshBasicMaterial color="#07101f" transparent opacity={0.26} side={THREE.BackSide} />
-    </mesh>
   );
 }
 

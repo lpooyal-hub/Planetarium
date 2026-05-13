@@ -27,7 +27,7 @@ export function App() {
   const [sceneState, setSceneState] = useState({ status: "loading", data: null, error: "" });
   const [selectedTarget, setSelectedTarget] = useState(null);
   const [showLabels, setShowLabels] = useState(true);
-  const [showGuides, setShowGuides] = useState(true);
+  const [showGuides, setShowGuides] = useState(false);
   const [showConstellations, setShowConstellations] = useState(true);
   const [showPlanets, setShowPlanets] = useState(true);
   const [autoRotate, setAutoRotate] = useState(true);

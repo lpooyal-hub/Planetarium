@@ -37,7 +37,7 @@ jobs:
           exit 1
 
       - name: Check frontend source integrity
-        run: docker compose exec -T frontend npm run check
+        run: docker compose run --rm --no-deps frontend npm run check
 
       - name: Verify HYG scene endpoint
         run: |

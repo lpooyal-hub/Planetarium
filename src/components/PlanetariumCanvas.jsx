@@ -423,10 +423,12 @@ function clampStarSize(magnitude) {
 function projectSkyPosition(star) {
   const az = (star.azimuth * Math.PI) / 180;
   const altitudeRatio = Math.max(0, star.altitude) / 90;
-  const horizonSpread = 0.56 + (1 - altitudeRatio) * 0.44;
-  const x = Math.sin(az) * 14.2 * horizonSpread;
-  const y = -0.8 + altitudeRatio * 6.9 + Math.sin(az * 0.7) * 0.22;
-  const z = -10.2 + Math.cos(az) * (4.6 * horizonSpread) - altitudeRatio * 0.35;
+  const horizonSpread = 0.72 + (1 - altitudeRatio) * 0.56;
+  const sideBias = Math.sin(az * 2) * 0.38;
+  const x = Math.sin(az) * 17.4 * horizonSpread + sideBias;
+  const y = -0.45 + altitudeRatio * 5.8 + Math.sin(az * 0.6) * 0.18;
+  const depthSpread = 6.2 * horizonSpread;
+  const z = -11.8 + Math.cos(az) * depthSpread - altitudeRatio * 0.24 + Math.sin(az * 1.7) * 0.45;
   return {
     x: Number(x.toFixed(4)),
     y: Number(y.toFixed(4)),

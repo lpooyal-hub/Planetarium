@@ -41,7 +41,7 @@ export function App() {
   const [showGuides, setShowGuides] = useState(false);
   const [showConstellations, setShowConstellations] = useState(true);
   const [autoRotate, setAutoRotate] = useState(true);
-  const [viewMode, setViewMode] = useState("observer");
+  const [viewMode, setViewMode] = useState("space");
   const [focusedConstellation, setFocusedConstellation] = useState("all");
   const [drawMode, setDrawMode] = useState(false);
   const [sketchName, setSketchName] = useState("");
@@ -340,6 +340,13 @@ export function App() {
               <section>
                 <p className="eyebrow">{dictionary.viewer.viewModeLabel}</p>
                 <div className="constellation-list focus-list">
+                  <button
+                    type="button"
+                    className={`focus-chip ${viewMode === "space" ? "is-active" : ""}`}
+                    onClick={() => setViewMode("space")}
+                  >
+                    {dictionary.viewer.viewModes.space}
+                  </button>
                   <button
                     type="button"
                     className={`focus-chip ${viewMode === "observer" ? "is-active" : ""}`}

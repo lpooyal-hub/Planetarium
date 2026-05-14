@@ -83,10 +83,12 @@ export const translations = {
       },
       viewModeLabel: "Sky view",
       viewModes: {
+        space: "Space drift",
         observer: "Observer view",
         panorama: "Panorama view"
       },
       viewModeDescriptions: {
+        space: "A floating, in-space feeling where the constellations surround you instead of sitting on a dome.",
         observer: "An upward-looking sky that feels closer to standing under the constellations.",
         panorama: "A flatter, wider night sky that spreads more calmly across the screen."
       },
@@ -149,6 +151,7 @@ export const translations = {
       },
       overlay: {
         modes: {
+          space: "A drifting space view where stars feel like they surround you instead of forming a dome",
           observer: "An upward night sky where the constellations hang overhead more naturally",
           panorama: "A wider night sky that stretches gently across the whole frame"
         },
@@ -317,10 +320,12 @@ export const translations = {
       },
       viewModeLabel: "하늘 시점",
       viewModes: {
+        space: "우주 시점",
         observer: "관측자 시점",
         panorama: "파노라마 시점"
       },
       viewModeDescriptions: {
+        space: "별자리가 돔처럼 얹히기보다, 내가 우주에 떠 있는 듯 주변을 감싸는 시점입니다.",
         observer: "별자리 아래에 서서 올려다보는 느낌에 더 가까운 시점입니다.",
         panorama: "화면 전체에 하늘이 넓게 퍼지는 더 평평한 감상용 시점입니다."
       },
@@ -383,6 +388,7 @@ export const translations = {
       },
       overlay: {
         modes: {
+          space: "별자리가 돔처럼 얹히지 않고, 우주에서 둘러싸인 듯 보이는 시점",
           observer: "머리 위로 별자리가 걸린 듯한, 올려다보는 밤하늘",
           panorama: "화면 전체에 하늘이 더 넓게 펼쳐지는 파노라마 밤하늘"
         },

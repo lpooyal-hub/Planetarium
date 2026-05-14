@@ -146,36 +146,38 @@ function SceneContents({
 
   useFrame((_, delta) => {
     const observerMode = viewMode === "observer";
-    const targetTiltX = observerMode ? -pointer.y * 0.035 : -pointer.y * 0.016;
-    const targetYawDrift = observerMode ? pointer.x * 0.055 : pointer.x * 0.032;
-    const targetCameraX = observerMode ? pointer.x * 0.38 : pointer.x * 0.86;
-    const targetCameraY = observerMode ? 0.55 + pointer.y * 0.34 : pointer.y * 0.12;
-    const targetCameraZ = observerMode ? -0.28 - Math.abs(pointer.x) * 0.08 : -0.16;
-    const targetLookX = observerMode ? pointer.x * 1.7 : pointer.x * 3.2;
-    const targetLookY = observerMode ? 2.9 + pointer.y * 1.4 : 0.65 + pointer.y * 0.55;
-    const targetLookZ = observerMode ? -13.6 : -12.2;
+    const panoramaMode = viewMode === "panorama";
+    const spaceMode = viewMode === "space";
+    const targetTiltX = spaceMode ? -pointer.y * 0.022 : observerMode ? -pointer.y * 0.035 : -pointer.y * 0.016;
+    const targetYawDrift = spaceMode ? pointer.x * 0.026 : observerMode ? pointer.x * 0.055 : pointer.x * 0.032;
+    const targetCameraX = spaceMode ? pointer.x * 1.15 : observerMode ? pointer.x * 0.38 : pointer.x * 0.86;
+    const targetCameraY = spaceMode ? pointer.y * 0.55 : observerMode ? 0.55 + pointer.y * 0.34 : pointer.y * 0.12;
+    const targetCameraZ = spaceMode ? -1.45 + Math.abs(pointer.x) * -0.04 : observerMode ? -0.28 - Math.abs(pointer.x) * 0.08 : -0.16;
+    const targetLookX = spaceMode ? pointer.x * 4.8 : observerMode ? pointer.x * 1.7 : pointer.x * 3.2;
+    const targetLookY = spaceMode ? pointer.y * 1.9 : observerMode ? 2.9 + pointer.y * 1.4 : 0.65 + pointer.y * 0.55;
+    const targetLookZ = spaceMode ? -11.2 : observerMode ? -13.6 : -12.2;
 
     if (groupRef.current) {
       if (autoRotate) {
-        groupRef.current.rotation.y += delta * (observerMode ? 0.011 : 0.008);
+        groupRef.current.rotation.y += delta * (spaceMode ? 0.006 : observerMode ? 0.011 : 0.008);
       }
-      rotationAnchor.current.x = THREE.MathUtils.damp(rotationAnchor.current.x, targetTiltX, observerMode ? 4.2 : 5.4, delta);
-      rotationAnchor.current.y = THREE.MathUtils.damp(rotationAnchor.current.y, targetYawDrift, observerMode ? 3.6 : 4.8, delta);
+      rotationAnchor.current.x = THREE.MathUtils.damp(rotationAnchor.current.x, targetTiltX, spaceMode ? 3.8 : observerMode ? 4.2 : 5.4, delta);
+      rotationAnchor.current.y = THREE.MathUtils.damp(rotationAnchor.current.y, targetYawDrift, spaceMode ? 3.4 : observerMode ? 3.6 : 4.8, delta);
       groupRef.current.rotation.x = rotationAnchor.current.x;
       groupRef.current.rotation.y += rotationAnchor.current.y * delta;
     }
 
-    cameraAnchor.current.x = THREE.MathUtils.damp(cameraAnchor.current.x, targetCameraX, observerMode ? 4 : 5.1, delta);
-    cameraAnchor.current.y = THREE.MathUtils.damp(cameraAnchor.current.y, targetCameraY, observerMode ? 4 : 5.1, delta);
-    cameraAnchor.current.z = THREE.MathUtils.damp(cameraAnchor.current.z, targetCameraZ, observerMode ? 4.8 : 5.4, delta);
+    cameraAnchor.current.x = THREE.MathUtils.damp(cameraAnchor.current.x, targetCameraX, spaceMode ? 3.8 : observerMode ? 4 : 5.1, delta);
+    cameraAnchor.current.y = THREE.MathUtils.damp(cameraAnchor.current.y, targetCameraY, spaceMode ? 3.8 : observerMode ? 4 : 5.1, delta);
+    cameraAnchor.current.z = THREE.MathUtils.damp(cameraAnchor.current.z, targetCameraZ, spaceMode ? 4.3 : observerMode ? 4.8 : 5.4, delta);
 
-    lookAnchor.current.x = THREE.MathUtils.damp(lookAnchor.current.x, targetLookX, observerMode ? 4.4 : 5.4, delta);
-    lookAnchor.current.y = THREE.MathUtils.damp(lookAnchor.current.y, targetLookY, observerMode ? 4.4 : 5.4, delta);
-    lookAnchor.current.z = THREE.MathUtils.damp(lookAnchor.current.z, targetLookZ, observerMode ? 5 : 5.7, delta);
+    lookAnchor.current.x = THREE.MathUtils.damp(lookAnchor.current.x, targetLookX, spaceMode ? 4 : observerMode ? 4.4 : 5.4, delta);
+    lookAnchor.current.y = THREE.MathUtils.damp(lookAnchor.current.y, targetLookY, spaceMode ? 4 : observerMode ? 4.4 : 5.4, delta);
+    lookAnchor.current.z = THREE.MathUtils.damp(lookAnchor.current.z, targetLookZ, spaceMode ? 4.5 : observerMode ? 5 : 5.7, delta);
 
     camera.position.x = cameraAnchor.current.x;
     camera.position.y = cameraAnchor.current.y;
-    camera.position.z = 18 + cameraAnchor.current.z;
+    camera.position.z = (spaceMode ? 15.6 : 18) + cameraAnchor.current.z;
     camera.lookAt(lookAnchor.current.x, lookAnchor.current.y, lookAnchor.current.z);
   });
 
@@ -453,7 +455,20 @@ function projectSkyPosition(star, viewMode) {
   let y;
   let z;
 
-  if (viewMode === "panorama") {
+  if (viewMode === "space") {
+    const radius = 18.8 + Math.max(0, 4.3 - star.magnitude) * 0.22;
+    const elevation = (altitudeRatio - 0.5) * Math.PI * 0.92;
+    const direction = new THREE.Vector3(
+      Math.sin(azWrapped) * Math.cos(elevation),
+      Math.sin(elevation),
+      -Math.cos(azWrapped) * Math.cos(elevation)
+    ).normalize();
+    const seed = Number.parseInt(String(star.id).replace(/\D/g, "").slice(-4) || "11", 10);
+    const drift = ((seed % 23) - 11) * 0.045;
+    x = direction.x * radius * 1.15 + drift;
+    y = direction.y * radius * 0.95;
+    z = -10.4 + direction.z * radius * 0.62 - Math.abs(direction.x) * 0.85;
+  } else if (viewMode === "panorama") {
     const horizonSpread = 18.8;
     const altitudeLift = Math.pow(altitudeRatio, 0.82);
     x = (azWrapped / Math.PI) * horizonSpread;

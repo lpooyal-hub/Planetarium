@@ -195,6 +195,7 @@ function BackgroundStarField({ stars, focusedConstellation }) {
     const colors = [];
     const sizes = [];
     const alphas = [];
+    const densityFactor = Math.min(1, stars.length / 2200);
 
     stars.forEach((star) => {
       if (!star.visible) {
@@ -207,9 +208,10 @@ function BackgroundStarField({ stars, focusedConstellation }) {
       colors.push(color.r, color.g, color.b);
 
       const highlighted = focusedConstellation !== "all" && star.constellation === focusedConstellation;
-      sizes.push(clampStarSize(star.magnitude) * (highlighted ? 1.45 : 1));
+      const sizeScale = highlighted ? 1.4 : 1 - densityFactor * 0.08;
+      sizes.push(clampStarSize(star.magnitude) * sizeScale);
 
-      const baseAlpha = focusedConstellation === "all" ? 0.26 : highlighted ? 0.62 : 0.07;
+      const baseAlpha = focusedConstellation === "all" ? 0.24 - densityFactor * 0.08 : highlighted ? 0.6 : 0.05 - densityFactor * 0.015;
       alphas.push(baseAlpha + Math.max(0, 0.16 - star.magnitude * 0.012));
     });
 
@@ -328,21 +330,30 @@ function ConstellationLines({ lines, stars, focusedConstellation }) {
     lineGeometry.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
     const highlightGeometry = new THREE.BufferGeometry();
     highlightGeometry.setAttribute("position", new THREE.Float32BufferAttribute(highlightedPoints, 3));
-    return { lineGeometry, highlightGeometry };
+    const densityFactor = Math.min(1, points.length / 1800);
+    return { lineGeometry, highlightGeometry, densityFactor };
   }, [focusedConstellation, lines, stars]);
+
+  const ambientOpacity = focusedConstellation === "all" ? 0.17 + geometry.densityFactor * 0.09 : 0.05 + geometry.densityFactor * 0.03;
+  const ambientGlowOpacity = focusedConstellation === "all" ? 0.06 + geometry.densityFactor * 0.04 : 0.02;
+  const highlightOpacity = 0.78 + geometry.densityFactor * 0.14;
+  const highlightGlowOpacity = 0.22 + geometry.densityFactor * 0.14;
 
   return (
     <>
       <lineSegments geometry={geometry.lineGeometry}>
-        <lineBasicMaterial color="#7adcd4" transparent opacity={focusedConstellation === "all" ? 0.24 : 0.08} />
+        <lineBasicMaterial color="#7adcd4" transparent opacity={ambientOpacity} />
+      </lineSegments>
+      <lineSegments geometry={geometry.lineGeometry}>
+        <lineBasicMaterial color="#dff7ff" transparent opacity={ambientGlowOpacity} />
       </lineSegments>
       {focusedConstellation !== "all" ? (
         <>
           <lineSegments geometry={geometry.highlightGeometry}>
-            <lineBasicMaterial color="#ffcf70" transparent opacity={0.95} />
+            <lineBasicMaterial color="#ffcf70" transparent opacity={highlightOpacity} />
           </lineSegments>
           <lineSegments geometry={geometry.highlightGeometry}>
-            <lineBasicMaterial color="#fff5c8" transparent opacity={0.34} />
+            <lineBasicMaterial color="#fff5c8" transparent opacity={highlightGlowOpacity} />
           </lineSegments>
         </>
       ) : null}

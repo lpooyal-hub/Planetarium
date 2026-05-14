@@ -41,6 +41,7 @@ export function App() {
   const [showGuides, setShowGuides] = useState(false);
   const [showConstellations, setShowConstellations] = useState(true);
   const [autoRotate, setAutoRotate] = useState(true);
+  const [viewMode, setViewMode] = useState("observer");
   const [focusedConstellation, setFocusedConstellation] = useState("all");
   const [drawMode, setDrawMode] = useState(false);
   const [sketchName, setSketchName] = useState("");
@@ -337,6 +338,26 @@ export function App() {
                 <p>{activeConstellationStory}</p>
               </section>
               <section>
+                <p className="eyebrow">{dictionary.viewer.viewModeLabel}</p>
+                <div className="constellation-list focus-list">
+                  <button
+                    type="button"
+                    className={`focus-chip ${viewMode === "observer" ? "is-active" : ""}`}
+                    onClick={() => setViewMode("observer")}
+                  >
+                    {dictionary.viewer.viewModes.observer}
+                  </button>
+                  <button
+                    type="button"
+                    className={`focus-chip ${viewMode === "panorama" ? "is-active" : ""}`}
+                    onClick={() => setViewMode("panorama")}
+                  >
+                    {dictionary.viewer.viewModes.panorama}
+                  </button>
+                </div>
+                <p className="helper-copy">{dictionary.viewer.viewModeDescriptions[viewMode]}</p>
+              </section>
+              <section>
                 <p className="eyebrow">{dictionary.viewer.constellationFocus}</p>
                 <label className="stacked-field">
                   <span>{dictionary.viewer.focusConstellation}</span>
@@ -477,12 +498,13 @@ export function App() {
             showGuides={showGuides}
             showConstellations={showConstellations}
             autoRotate={autoRotate}
+            viewMode={viewMode}
             focusedConstellation={currentPage === "watch" ? focusedConstellation : "all"}
             drawMode={currentPage === "sketch" ? drawMode : false}
             customSketchStarIds={displayedSketchStarIds}
           />
           <div className="viewer-overlay">
-            <span>{dictionary.viewer.overlay.mood}</span>
+            <span>{dictionary.viewer.overlay.modes[viewMode]}</span>
             <span>{currentPage === "watch" ? dictionary.viewer.overlay.inspect : dictionary.viewer.overlay.draw}</span>
             <button type="button" className="overlay-button" onClick={toggleFullscreen}>
               {isFullscreen ? dictionary.viewer.exitFullscreen : dictionary.viewer.enterFullscreen}

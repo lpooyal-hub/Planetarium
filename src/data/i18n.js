@@ -81,6 +81,15 @@ export const translations = {
         watch: "Night Sky",
         sketch: "Sketch Sky"
       },
+      viewModeLabel: "Sky view",
+      viewModes: {
+        observer: "Observer view",
+        panorama: "Panorama view"
+      },
+      viewModeDescriptions: {
+        observer: "An upward-looking sky that feels closer to standing under the constellations.",
+        panorama: "A flatter, wider night sky that spreads more calmly across the screen."
+      },
       controls: "Viewer controls",
       sketchControls: "Sketch controls",
       tonightMood: "Tonight's story",
@@ -139,7 +148,10 @@ export const translations = {
         save: "Save the pattern when it starts to feel right."
       },
       overlay: {
-        mood: "A calm sky with brighter constellations resting over the background stars",
+        modes: {
+          observer: "An upward night sky where the constellations hang overhead more naturally",
+          panorama: "A wider night sky that stretches gently across the whole frame"
+        },
         inspect: "Click stars to inspect them",
         draw: "Sketch mode records stars in the order you click"
       },
@@ -303,6 +315,15 @@ export const translations = {
         watch: "밤하늘 감상",
         sketch: "밤하늘 그리기"
       },
+      viewModeLabel: "하늘 시점",
+      viewModes: {
+        observer: "관측자 시점",
+        panorama: "파노라마 시점"
+      },
+      viewModeDescriptions: {
+        observer: "별자리 아래에 서서 올려다보는 느낌에 더 가까운 시점입니다.",
+        panorama: "화면 전체에 하늘이 넓게 퍼지는 더 평평한 감상용 시점입니다."
+      },
       controls: "뷰어 제어",
       sketchControls: "스케치 제어",
       tonightMood: "오늘 밤의 분위기",
@@ -361,7 +382,10 @@ export const translations = {
         save: "마음에 드는 흐름이 나오면 저장하세요."
       },
       overlay: {
-        mood: "배경별 위에 별자리가 조금 더 또렷하게 떠오르는 차분한 밤하늘",
+        modes: {
+          observer: "머리 위로 별자리가 걸린 듯한, 올려다보는 밤하늘",
+          panorama: "화면 전체에 하늘이 더 넓게 펼쳐지는 파노라마 밤하늘"
+        },
         inspect: "별을 눌러 상세 정보를 확인",
         draw: "스케치 모드에서는 클릭한 순서대로 별이 이어집니다"
       },

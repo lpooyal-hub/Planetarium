@@ -340,6 +340,12 @@ input[type="range"] {
   cursor: pointer;
 }
 
+.overlay-button.is-active {
+  border-color: rgba(127, 219, 201, 0.55);
+  background: rgba(127, 219, 201, 0.18);
+  color: #dffbf7;
+}
+
 .viewer.is-fullscreen {
   border-radius: 0;
   border: 0;

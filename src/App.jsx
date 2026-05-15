@@ -12,6 +12,107 @@ const planetPresets = [
   { id: "saturn", color: "#d6bd8a", ring: true }
 ];
 
+function createAmbientSoundscape() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) {
+    return null;
+  }
+
+  const context = new AudioContextClass();
+  const master = context.createGain();
+  const delay = context.createDelay(5);
+  const feedback = context.createGain();
+  const wash = context.createGain();
+  const nodes = [];
+
+  master.gain.value = 0;
+  wash.gain.value = 0.28;
+  delay.delayTime.value = 1.7;
+  feedback.gain.value = 0.18;
+
+  wash.connect(master);
+  delay.connect(feedback);
+  feedback.connect(delay);
+  delay.connect(master);
+  master.connect(context.destination);
+
+  const voices = [
+    { frequency: 55, gain: 0.034, lfo: 0.026 },
+    { frequency: 82.41, gain: 0.024, lfo: 0.021 },
+    { frequency: 110, gain: 0.018, lfo: 0.017 },
+    { frequency: 146.83, gain: 0.012, lfo: 0.013 }
+  ];
+
+  voices.forEach((voice, index) => {
+    const oscillator = context.createOscillator();
+    const voiceGain = context.createGain();
+    const filter = context.createBiquadFilter();
+    const lfo = context.createOscillator();
+    const lfoGain = context.createGain();
+
+    oscillator.type = index === 0 ? "sine" : "triangle";
+    oscillator.frequency.value = voice.frequency;
+    voiceGain.gain.value = voice.gain;
+    filter.type = "lowpass";
+    filter.frequency.value = 540 + index * 180;
+    filter.Q.value = 0.55;
+    lfo.frequency.value = voice.lfo;
+    lfoGain.gain.value = voice.gain * 0.45;
+
+    oscillator.connect(filter);
+    filter.connect(voiceGain);
+    voiceGain.connect(wash);
+    voiceGain.connect(delay);
+    lfo.connect(lfoGain);
+    lfoGain.connect(voiceGain.gain);
+
+    oscillator.start();
+    lfo.start();
+    nodes.push(oscillator, lfo);
+  });
+
+  const shimmerBuffer = context.createBuffer(1, context.sampleRate * 3, context.sampleRate);
+  const shimmerData = shimmerBuffer.getChannelData(0);
+  for (let index = 0; index < shimmerData.length; index += 1) {
+    shimmerData[index] = (Math.random() * 2 - 1) * 0.035;
+  }
+
+  const shimmer = context.createBufferSource();
+  const shimmerFilter = context.createBiquadFilter();
+  const shimmerGain = context.createGain();
+  shimmer.buffer = shimmerBuffer;
+  shimmer.loop = true;
+  shimmerFilter.type = "bandpass";
+  shimmerFilter.frequency.value = 1280;
+  shimmerFilter.Q.value = 0.65;
+  shimmerGain.gain.value = 0.022;
+  shimmer.connect(shimmerFilter);
+  shimmerFilter.connect(shimmerGain);
+  shimmerGain.connect(master);
+  shimmer.start();
+  nodes.push(shimmer);
+
+  master.gain.setTargetAtTime(0.42, context.currentTime, 1.4);
+
+  return {
+    context,
+    stop() {
+      master.gain.cancelScheduledValues(context.currentTime);
+      master.gain.setTargetAtTime(0, context.currentTime, 0.35);
+      window.setTimeout(() => {
+        nodes.forEach((node) => {
+          try {
+            node.stop();
+          } catch {
+            // Some browser audio nodes may already be stopped.
+          }
+        });
+        context.close();
+      }, 900);
+    }
+  };
+}
+
 const defaultObserver = {
   latitude: 37.5665,
   longitude: 126.978,
@@ -55,6 +156,7 @@ function createBlankSpaceScene(name = "") {
 
 export function App() {
   const viewerRef = useRef(null);
+  const ambientSoundRef = useRef(null);
   const [currentPage, setCurrentPage] = useState("watch");
   const [language, setLanguage] = useState(getInitialLanguage);
   const [observer, setObserver] = useState(defaultObserver);
@@ -76,6 +178,7 @@ export function App() {
   const [activeSketchId, setActiveSketchId] = useState("draft");
   const [customSpace, setCustomSpace] = useState(() => createBlankSpaceScene());
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [ambientEnabled, setAmbientEnabled] = useState(false);
   const dictionary = translations[language];
 
   useEffect(() => {
@@ -98,6 +201,13 @@ export function App() {
     document.documentElement.lang = language;
     window.localStorage.setItem("planetarium-language", language);
   }, [language]);
+
+  useEffect(
+    () => () => {
+      ambientSoundRef.current?.stop();
+    },
+    []
+  );
 
   useEffect(() => {
     window.localStorage.setItem(SKETCH_STORAGE_KEY, JSON.stringify(savedSketches));
@@ -412,6 +522,24 @@ export function App() {
     }
 
     await viewerRef.current.requestFullscreen();
+  }
+
+  async function toggleAmbientSound() {
+    if (ambientSoundRef.current) {
+      ambientSoundRef.current.stop();
+      ambientSoundRef.current = null;
+      setAmbientEnabled(false);
+      return;
+    }
+
+    const soundscape = createAmbientSoundscape();
+    if (!soundscape) {
+      return;
+    }
+
+    ambientSoundRef.current = soundscape;
+    await soundscape.context.resume();
+    setAmbientEnabled(true);
   }
 
   function shiftTime(hours) {
@@ -749,6 +877,9 @@ export function App() {
             </span>
             <button type="button" className="overlay-button" onClick={toggleFullscreen}>
               {isFullscreen ? dictionary.viewer.exitFullscreen : dictionary.viewer.enterFullscreen}
+            </button>
+            <button type="button" className={`overlay-button ${ambientEnabled ? "is-active" : ""}`} onClick={toggleAmbientSound}>
+              {ambientEnabled ? dictionary.viewer.ambient.off : dictionary.viewer.ambient.on}
             </button>
           </div>
         </main>

@@ -245,6 +245,7 @@ export function App() {
     () => {
       return () => {
         ambientSoundRef.current?.stop();
+        ambientSoundRef.current = null;
       };
     },
     []
@@ -614,7 +615,24 @@ export function App() {
 
   async function startAmbientSound({ remember = true } = {}) {
     if (ambientSoundRef.current) {
-      return true;
+      try {
+        if (ambientSoundRef.current.context.state === "suspended") {
+          await ambientSoundRef.current.context.resume();
+        }
+        if (ambientSoundRef.current.context.state === "running") {
+          setAmbientEnabled(true);
+          if (remember) {
+            window.localStorage.setItem(AMBIENT_STORAGE_KEY, "on");
+          }
+          return true;
+        }
+      } catch (error) {
+        console.warn("Restarting ambient audio after a suspended context:", error);
+      }
+
+      ambientSoundRef.current.stop();
+      ambientSoundRef.current = null;
+      setAmbientEnabled(false);
     }
 
     const soundscape = createAmbientSoundscape();

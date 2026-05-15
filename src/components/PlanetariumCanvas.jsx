@@ -163,6 +163,7 @@ function SceneContents({
   const lookAnchor = useRef({ x: 0, y: 1.8, z: -12.8 });
   const rotationAnchor = useRef({ x: 0, y: 0 });
   const { camera, pointer } = useThree();
+  const spaceMode = viewMode === "space";
   const projectedStars = useMemo(() => scene.stars.map((star) => ({ ...star, ...projectSkyPosition(star, viewMode) })), [scene.stars, viewMode]);
 
   const featuredStars = useMemo(
@@ -228,8 +229,6 @@ function SceneContents({
 
   useFrame(({ clock }, delta) => {
     const observerMode = viewMode === "observer";
-    const panoramaMode = viewMode === "panorama";
-    const spaceMode = viewMode === "space";
     const driftA = clock.elapsedTime * 0.085;
     const driftB = clock.elapsedTime * 0.052;
     const targetTiltX = spaceMode ? Math.sin(driftB) * 0.028 : observerMode ? -pointer.y * 0.035 : -pointer.y * 0.016;

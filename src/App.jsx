@@ -23,24 +23,32 @@ function createAmbientSoundscape() {
   const delay = context.createDelay(5);
   const feedback = context.createGain();
   const wash = context.createGain();
+  const compressor = context.createDynamicsCompressor();
   const nodes = [];
+  const timers = [];
 
   master.gain.value = 0;
-  wash.gain.value = 0.28;
-  delay.delayTime.value = 1.7;
-  feedback.gain.value = 0.18;
+  wash.gain.value = 0.52;
+  delay.delayTime.value = 1.9;
+  feedback.gain.value = 0.26;
+  compressor.threshold.value = -22;
+  compressor.knee.value = 18;
+  compressor.ratio.value = 4;
+  compressor.attack.value = 0.02;
+  compressor.release.value = 0.42;
 
   wash.connect(master);
   delay.connect(feedback);
   feedback.connect(delay);
   delay.connect(master);
-  master.connect(context.destination);
+  master.connect(compressor);
+  compressor.connect(context.destination);
 
   const voices = [
-    { frequency: 55, gain: 0.034, lfo: 0.026 },
-    { frequency: 82.41, gain: 0.024, lfo: 0.021 },
-    { frequency: 110, gain: 0.018, lfo: 0.017 },
-    { frequency: 146.83, gain: 0.012, lfo: 0.013 }
+    { frequency: 55, gain: 0.088, lfo: 0.026 },
+    { frequency: 82.41, gain: 0.062, lfo: 0.021 },
+    { frequency: 110, gain: 0.042, lfo: 0.017 },
+    { frequency: 146.83, gain: 0.028, lfo: 0.013 }
   ];
 
   voices.forEach((voice, index) => {
@@ -85,20 +93,50 @@ function createAmbientSoundscape() {
   shimmerFilter.type = "bandpass";
   shimmerFilter.frequency.value = 1280;
   shimmerFilter.Q.value = 0.65;
-  shimmerGain.gain.value = 0.022;
+  shimmerGain.gain.value = 0.052;
   shimmer.connect(shimmerFilter);
   shimmerFilter.connect(shimmerGain);
   shimmerGain.connect(master);
   shimmer.start();
   nodes.push(shimmer);
 
-  master.gain.setTargetAtTime(0.42, context.currentTime, 1.4);
+  function playChime(delaySeconds = 0) {
+    const startAt = context.currentTime + delaySeconds;
+    const oscillator = context.createOscillator();
+    const chimeGain = context.createGain();
+    const filter = context.createBiquadFilter();
+    const frequencies = [329.63, 392, 493.88, 659.25];
+    const frequency = frequencies[Math.floor(Math.random() * frequencies.length)];
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(frequency, startAt);
+    oscillator.frequency.exponentialRampToValueAtTime(frequency * 1.01, startAt + 2.4);
+    filter.type = "highpass";
+    filter.frequency.value = 420;
+    chimeGain.gain.setValueAtTime(0, startAt);
+    chimeGain.gain.linearRampToValueAtTime(0.065, startAt + 0.18);
+    chimeGain.gain.exponentialRampToValueAtTime(0.001, startAt + 3.4);
+
+    oscillator.connect(filter);
+    filter.connect(chimeGain);
+    chimeGain.connect(master);
+    chimeGain.connect(delay);
+    oscillator.start(startAt);
+    oscillator.stop(startAt + 3.6);
+  }
+
+  playChime(0.18);
+  playChime(1.1);
+  timers.push(window.setInterval(() => playChime(), 6200));
+
+  master.gain.setTargetAtTime(0.78, context.currentTime, 0.9);
 
   return {
     context,
     stop() {
       master.gain.cancelScheduledValues(context.currentTime);
       master.gain.setTargetAtTime(0, context.currentTime, 0.35);
+      timers.forEach((timer) => window.clearInterval(timer));
       window.setTimeout(() => {
         nodes.forEach((node) => {
           try {

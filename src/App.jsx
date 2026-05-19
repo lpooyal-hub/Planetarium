@@ -937,19 +937,6 @@ export function App() {
               <>
                 <label className="stacked-field">
                   <span>
-                    {dictionary.viewer.ambient.volume}: {Math.round(ambientVolume * 100)}%
-                  </span>
-                  <input
-                    type="range"
-                    min="0.35"
-                    max="1"
-                    step="0.05"
-                    value={ambientVolume}
-                    onChange={(event) => setAmbientVolume(Number(event.target.value))}
-                  />
-                </label>
-                <label className="stacked-field">
-                  <span>
                     {dictionary.viewer.limitingMagnitude}: {limitingMagnitude.toFixed(1)}
                   </span>
                   <input
@@ -1028,14 +1015,19 @@ export function App() {
             onCreativeSpaceClick={addCustomObject}
           />
           <div className="viewer-overlay">
-            <span>{dictionary.viewer.overlay.modes[viewMode]}</span>
-            <span>
-              {currentPage === "watch"
-                ? viewMode === "space"
-                  ? dictionary.viewer.overlay.screensaver
-                  : dictionary.viewer.overlay.inspect
-                : dictionary.viewer.overlay.draw}
-            </span>
+            <label className="overlay-volume">
+              <span>{dictionary.viewer.ambient.volumeShort}</span>
+              <input
+                type="range"
+                min="0.35"
+                max="1"
+                step="0.05"
+                value={ambientVolume}
+                aria-label={dictionary.viewer.ambient.volume}
+                onChange={(event) => setAmbientVolume(Number(event.target.value))}
+              />
+              <strong>{Math.round(ambientVolume * 100)}%</strong>
+            </label>
             <button type="button" className="overlay-button" onClick={toggleFullscreen}>
               {isFullscreen ? dictionary.viewer.exitFullscreen : dictionary.viewer.enterFullscreen}
             </button>

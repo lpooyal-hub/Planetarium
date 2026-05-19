@@ -185,7 +185,8 @@ export const translations = {
       },
       ambient: {
         on: "Ambient on",
-        off: "Ambient off"
+        off: "Ambient off",
+        volume: "Ambient volume"
       },
       controls: "Viewer controls",
       sketchControls: "Sketch controls",
@@ -437,7 +438,8 @@ export const translations = {
       },
       ambient: {
         on: "앰비언트 켜기",
-        off: "앰비언트 끄기"
+        off: "앰비언트 끄기",
+        volume: "앰비언트 볼륨"
       },
       controls: "뷰어 제어",
       sketchControls: "스케치 제어",

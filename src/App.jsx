@@ -5,6 +5,8 @@ import { getInitialLanguage, translations } from "./data/i18n.js";
 
 const SKETCH_STORAGE_KEY = "planetarium-custom-space-scenes";
 const AMBIENT_STORAGE_KEY = "planetarium-ambient-preference";
+const AMBIENT_VOLUME_STORAGE_KEY = "planetarium-ambient-volume";
+const DEFAULT_AMBIENT_VOLUME = 0.9;
 
 const planetPresets = [
   { id: "amber", color: "#f3b46c", ring: false },
@@ -13,7 +15,16 @@ const planetPresets = [
   { id: "saturn", color: "#d6bd8a", ring: true }
 ];
 
-function createAmbientSoundscape() {
+function getInitialAmbientVolume() {
+  const saved = Number(window.localStorage.getItem(AMBIENT_VOLUME_STORAGE_KEY));
+  if (Number.isFinite(saved)) {
+    return Math.min(1, Math.max(0.35, saved));
+  }
+
+  return DEFAULT_AMBIENT_VOLUME;
+}
+
+function createAmbientSoundscape(initialVolume = DEFAULT_AMBIENT_VOLUME) {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) {
     return null;
@@ -130,10 +141,14 @@ function createAmbientSoundscape() {
   playChime(1.1);
   timers.push(window.setInterval(() => playChime(), 6200));
 
-  master.gain.setTargetAtTime(0.9, context.currentTime, 0.9);
+  master.gain.setTargetAtTime(initialVolume, context.currentTime, 0.9);
 
   return {
     context,
+    setVolume(volume) {
+      master.gain.cancelScheduledValues(context.currentTime);
+      master.gain.setTargetAtTime(volume, context.currentTime, 0.18);
+    },
     stop() {
       master.gain.cancelScheduledValues(context.currentTime);
       master.gain.setTargetAtTime(0, context.currentTime, 0.35);
@@ -218,6 +233,7 @@ export function App() {
   const [customSpace, setCustomSpace] = useState(() => createBlankSpaceScene());
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [ambientEnabled, setAmbientEnabled] = useState(false);
+  const [ambientVolume, setAmbientVolume] = useState(getInitialAmbientVolume);
   const dictionary = translations[language];
 
   useEffect(() => {
@@ -289,6 +305,11 @@ export function App() {
   useEffect(() => {
     window.localStorage.setItem(SKETCH_STORAGE_KEY, JSON.stringify(savedSketches));
   }, [savedSketches]);
+
+  useEffect(() => {
+    window.localStorage.setItem(AMBIENT_VOLUME_STORAGE_KEY, String(ambientVolume));
+    ambientSoundRef.current?.setVolume(ambientVolume);
+  }, [ambientVolume]);
 
   useEffect(() => {
     function handleFullscreenChange() {
@@ -635,7 +656,7 @@ export function App() {
       setAmbientEnabled(false);
     }
 
-    const soundscape = createAmbientSoundscape();
+    const soundscape = createAmbientSoundscape(ambientVolume);
     if (!soundscape) {
       return false;
     }
@@ -914,6 +935,19 @@ export function App() {
             <p className="eyebrow">{dictionary.viewer.atmosphere}</p>
             {currentPage === "watch" ? (
               <>
+                <label className="stacked-field">
+                  <span>
+                    {dictionary.viewer.ambient.volume}: {Math.round(ambientVolume * 100)}%
+                  </span>
+                  <input
+                    type="range"
+                    min="0.35"
+                    max="1"
+                    step="0.05"
+                    value={ambientVolume}
+                    onChange={(event) => setAmbientVolume(Number(event.target.value))}
+                  />
+                </label>
                 <label className="stacked-field">
                   <span>
                     {dictionary.viewer.limitingMagnitude}: {limitingMagnitude.toFixed(1)}

@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getSkyScene } from "./api/backend.js";
 import { PlanetariumCanvas } from "./components/PlanetariumCanvas.jsx";
+import { config } from "./config.js";
 import { getInitialLanguage, translations } from "./data/i18n.js";
+import { useAmbientAudio } from "./hooks/useAmbientAudio.js";
 
 const SKETCH_STORAGE_KEY = "planetarium-custom-space-scenes";
-const AMBIENT_STORAGE_KEY = "planetarium-ambient-preference";
-const AMBIENT_VOLUME_STORAGE_KEY = "planetarium-ambient-volume";
 const FAVORITE_CONSTELLATIONS_STORAGE_KEY = "planetarium-favorite-constellations";
-const DEFAULT_AMBIENT_VOLUME = 0.9;
 
 const planetPresets = [
   { id: "amber", color: "#f3b46c", ring: false },
@@ -16,15 +15,6 @@ const planetPresets = [
   { id: "saturn", color: "#d6bd8a", ring: true }
 ];
 
-function getInitialAmbientVolume() {
-  const saved = Number(window.localStorage.getItem(AMBIENT_VOLUME_STORAGE_KEY));
-  if (Number.isFinite(saved)) {
-    return Math.min(1, Math.max(0.35, saved));
-  }
-
-  return DEFAULT_AMBIENT_VOLUME;
-}
-
 function getInitialFavoriteConstellations() {
   try {
     const saved = JSON.parse(window.localStorage.getItem(FAVORITE_CONSTELLATIONS_STORAGE_KEY) || "[]");
@@ -32,149 +22,6 @@ function getInitialFavoriteConstellations() {
   } catch {
     return [];
   }
-}
-
-function createAmbientSoundscape(initialVolume = DEFAULT_AMBIENT_VOLUME) {
-  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContextClass) {
-    return null;
-  }
-
-  const context = new AudioContextClass();
-  const master = context.createGain();
-  const delay = context.createDelay(5);
-  const feedback = context.createGain();
-  const wash = context.createGain();
-  const compressor = context.createDynamicsCompressor();
-  const nodes = [];
-  const timers = [];
-
-  master.gain.value = 0;
-  wash.gain.value = 0.52;
-  delay.delayTime.value = 1.9;
-  feedback.gain.value = 0.26;
-  compressor.threshold.value = -22;
-  compressor.knee.value = 18;
-  compressor.ratio.value = 4;
-  compressor.attack.value = 0.02;
-  compressor.release.value = 0.42;
-
-  wash.connect(master);
-  delay.connect(feedback);
-  feedback.connect(delay);
-  delay.connect(master);
-  master.connect(compressor);
-  compressor.connect(context.destination);
-
-  const voices = [
-    { frequency: 55, gain: 0.088, lfo: 0.026 },
-    { frequency: 82.41, gain: 0.062, lfo: 0.021 },
-    { frequency: 110, gain: 0.042, lfo: 0.017 },
-    { frequency: 146.83, gain: 0.028, lfo: 0.013 }
-  ];
-
-  voices.forEach((voice, index) => {
-    const oscillator = context.createOscillator();
-    const voiceGain = context.createGain();
-    const filter = context.createBiquadFilter();
-    const lfo = context.createOscillator();
-    const lfoGain = context.createGain();
-
-    oscillator.type = index === 0 ? "sine" : "triangle";
-    oscillator.frequency.value = voice.frequency;
-    voiceGain.gain.value = voice.gain;
-    filter.type = "lowpass";
-    filter.frequency.value = 540 + index * 180;
-    filter.Q.value = 0.55;
-    lfo.frequency.value = voice.lfo;
-    lfoGain.gain.value = voice.gain * 0.45;
-
-    oscillator.connect(filter);
-    filter.connect(voiceGain);
-    voiceGain.connect(wash);
-    voiceGain.connect(delay);
-    lfo.connect(lfoGain);
-    lfoGain.connect(voiceGain.gain);
-
-    oscillator.start();
-    lfo.start();
-    nodes.push(oscillator, lfo);
-  });
-
-  const shimmerBuffer = context.createBuffer(1, context.sampleRate * 3, context.sampleRate);
-  const shimmerData = shimmerBuffer.getChannelData(0);
-  for (let index = 0; index < shimmerData.length; index += 1) {
-    shimmerData[index] = (Math.random() * 2 - 1) * 0.035;
-  }
-
-  const shimmer = context.createBufferSource();
-  const shimmerFilter = context.createBiquadFilter();
-  const shimmerGain = context.createGain();
-  shimmer.buffer = shimmerBuffer;
-  shimmer.loop = true;
-  shimmerFilter.type = "bandpass";
-  shimmerFilter.frequency.value = 1280;
-  shimmerFilter.Q.value = 0.65;
-  shimmerGain.gain.value = 0.052;
-  shimmer.connect(shimmerFilter);
-  shimmerFilter.connect(shimmerGain);
-  shimmerGain.connect(master);
-  shimmer.start();
-  nodes.push(shimmer);
-
-  function playChime(delaySeconds = 0) {
-    const startAt = context.currentTime + delaySeconds;
-    const oscillator = context.createOscillator();
-    const chimeGain = context.createGain();
-    const filter = context.createBiquadFilter();
-    const frequencies = [329.63, 392, 493.88, 659.25];
-    const frequency = frequencies[Math.floor(Math.random() * frequencies.length)];
-
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(frequency, startAt);
-    oscillator.frequency.exponentialRampToValueAtTime(frequency * 1.01, startAt + 2.4);
-    filter.type = "highpass";
-    filter.frequency.value = 420;
-    chimeGain.gain.setValueAtTime(0, startAt);
-    chimeGain.gain.linearRampToValueAtTime(0.065, startAt + 0.18);
-    chimeGain.gain.exponentialRampToValueAtTime(0.001, startAt + 3.4);
-
-    oscillator.connect(filter);
-    filter.connect(chimeGain);
-    chimeGain.connect(master);
-    chimeGain.connect(delay);
-    oscillator.start(startAt);
-    oscillator.stop(startAt + 3.6);
-  }
-
-  playChime(0.18);
-  playChime(1.1);
-  timers.push(window.setInterval(() => playChime(), 6200));
-
-  master.gain.setTargetAtTime(initialVolume, context.currentTime, 0.9);
-
-  return {
-    context,
-    setVolume(volume) {
-      master.gain.cancelScheduledValues(context.currentTime);
-      master.gain.setTargetAtTime(volume, context.currentTime, 0.18);
-    },
-    stop() {
-      master.gain.cancelScheduledValues(context.currentTime);
-      master.gain.setTargetAtTime(0, context.currentTime, 0.35);
-      timers.forEach((timer) => window.clearInterval(timer));
-      window.setTimeout(() => {
-        nodes.forEach((node) => {
-          try {
-            node.stop();
-          } catch {
-            // Some browser audio nodes may already be stopped.
-          }
-        });
-        context.close();
-      }, 900);
-    }
-  };
 }
 
 const defaultObserver = {
@@ -233,12 +80,6 @@ const VIEW_MODE_ORDER = ["space", "observer", "panorama", "projection"];
 
 export function App() {
   const viewerRef = useRef(null);
-  const ambientSoundRef = useRef(null);
-  const ambientPreferenceRef = useRef(true);
-  const ambientRestartingRef = useRef(false);
-  const ambientVolumeRef = useRef(getInitialAmbientVolume());
-  const ambientWatchdogRef = useRef({ frame: 0, until: 0, lastAttempt: 0 });
-  const ambientRetryTimersRef = useRef([]);
   const [currentPage, setCurrentPage] = useState("watch");
   const [language, setLanguage] = useState(getInitialLanguage);
   const [observer, setObserver] = useState(defaultObserver);
@@ -266,9 +107,11 @@ export function App() {
   const [activeSketchId, setActiveSketchId] = useState("draft");
   const [customSpace, setCustomSpace] = useState(() => createBlankSpaceScene());
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [ambientEnabled, setAmbientEnabled] = useState(true);
-  const [ambientVolume, setAmbientVolume] = useState(getInitialAmbientVolume);
   const [favoriteConstellations, setFavoriteConstellations] = useState(getInitialFavoriteConstellations);
+  const { ambientEnabled, ambientVolume, setAmbientVolume, ambientStatus, toggleAmbientSound, wakeAmbient } = useAmbientAudio({
+    trackUrl: config.ambientTrackUrl,
+    isReady: sceneState.status === "ready"
+  });
   const dictionary = translations[language];
 
   useEffect(() => {
@@ -296,103 +139,6 @@ export function App() {
     window.localStorage.setItem("planetarium-language", language);
   }, [language]);
 
-  useEffect(
-    () => {
-      return () => {
-        ambientRetryTimersRef.current.forEach((timer) => window.clearTimeout(timer));
-        ambientRetryTimersRef.current = [];
-        if (ambientWatchdogRef.current.frame) {
-          window.cancelAnimationFrame(ambientWatchdogRef.current.frame);
-        }
-        ambientSoundRef.current?.stop();
-        ambientSoundRef.current = null;
-      };
-    },
-    []
-  );
-
-  useEffect(() => {
-    if (!ambientPreferenceRef.current) {
-      return undefined;
-    }
-
-    const scheduleAmbientRetries = (durations = [180, 900, 2200, 4200]) => {
-      ambientRetryTimersRef.current.forEach((timer) => window.clearTimeout(timer));
-      ambientRetryTimersRef.current = durations.map((delay) =>
-        window.setTimeout(() => {
-          if (!ambientPreferenceRef.current) {
-            return;
-          }
-          kickAmbientWatchdog(18000);
-          ensureAmbientSound().catch(() => {});
-        }, delay)
-      );
-    };
-
-    const retryAmbient = () => {
-      if (!ambientPreferenceRef.current) {
-        return;
-      }
-      kickAmbientWatchdog(18000);
-      ensureAmbientSound().catch(() => {});
-      scheduleAmbientRetries();
-    };
-    const retryWhenVisible = () => {
-      if (document.visibilityState === "visible") {
-        retryAmbient();
-      }
-    };
-    const interval = window.setInterval(() => {
-      if (!ambientPreferenceRef.current) {
-        return;
-      }
-      if (!ambientSoundRef.current || ambientSoundRef.current.context.state !== "running") {
-        retryAmbient();
-        return;
-      }
-      ambientSoundRef.current.setVolume(ambientVolumeRef.current);
-      ambientSoundRef.current.context.resume().catch(() => {
-        retryAmbient();
-      });
-    }, 1500);
-
-    retryAmbient();
-    window.addEventListener("load", retryAmbient);
-    window.addEventListener("pointerdown", retryAmbient, { passive: true });
-    window.addEventListener("click", retryAmbient, { passive: true });
-    window.addEventListener("mousemove", retryAmbient, { passive: true });
-    window.addEventListener("keydown", retryAmbient);
-    window.addEventListener("touchstart", retryAmbient, { passive: true });
-    window.addEventListener("focus", retryAmbient);
-    window.addEventListener("pageshow", retryAmbient);
-    window.addEventListener("online", retryAmbient);
-    document.addEventListener("visibilitychange", retryWhenVisible);
-
-    return () => {
-      window.clearInterval(interval);
-      ambientRetryTimersRef.current.forEach((timer) => window.clearTimeout(timer));
-      ambientRetryTimersRef.current = [];
-      window.removeEventListener("load", retryAmbient);
-      window.removeEventListener("pointerdown", retryAmbient);
-      window.removeEventListener("click", retryAmbient);
-      window.removeEventListener("mousemove", retryAmbient);
-      window.removeEventListener("keydown", retryAmbient);
-      window.removeEventListener("touchstart", retryAmbient);
-      window.removeEventListener("focus", retryAmbient);
-      window.removeEventListener("pageshow", retryAmbient);
-      window.removeEventListener("online", retryAmbient);
-      document.removeEventListener("visibilitychange", retryWhenVisible);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!ambientPreferenceRef.current || sceneState.status !== "ready") {
-      return;
-    }
-    kickAmbientWatchdog(18000);
-    ensureAmbientSound().catch(() => {});
-  }, [sceneState.status, observedAt, viewMode]);
-
   useEffect(() => {
     window.localStorage.setItem(SKETCH_STORAGE_KEY, JSON.stringify(savedSketches));
   }, [savedSketches]);
@@ -400,12 +146,6 @@ export function App() {
   useEffect(() => {
     window.localStorage.setItem(FAVORITE_CONSTELLATIONS_STORAGE_KEY, JSON.stringify(favoriteConstellations));
   }, [favoriteConstellations]);
-
-  useEffect(() => {
-    ambientVolumeRef.current = ambientVolume;
-    window.localStorage.setItem(AMBIENT_VOLUME_STORAGE_KEY, String(ambientVolume));
-    ambientSoundRef.current?.setVolume(ambientVolume);
-  }, [ambientVolume]);
 
   useEffect(() => {
     function handleFullscreenChange() {
@@ -535,7 +275,13 @@ export function App() {
     (activeConstellationKey && dictionary.viewer.constellationMoods?.[activeConstellationKey]?.[language]) || dictionary.viewer.constellationFallback;
   const activeConstellationIsFavorite = Boolean(activeConstellationKey && favoriteConstellations.includes(activeConstellationKey));
   const sketchViewDescription = dictionary.viewer.viewModeDescriptions[viewMode];
-  const ambientStatusLabel = ambientEnabled ? dictionary.viewer.ambient.running : dictionary.viewer.ambient.waiting;
+  const ambientStatusLabel = dictionary.viewer.ambient[ambientStatus] || dictionary.viewer.ambient.waiting;
+  const ambientStatusHint =
+    ambientStatus === "missing"
+      ? dictionary.viewer.ambient.missingHint
+      : ambientStatus === "error"
+        ? dictionary.viewer.ambient.errorHint
+        : dictionary.viewer.ambient.hint;
   const observerMomentLabel = useMemo(() => {
     const date = new Date(observedAt);
     if (Number.isNaN(date.getTime())) {
@@ -1070,168 +816,6 @@ export function App() {
     }
 
     await viewerRef.current.requestFullscreen();
-  }
-
-  function stopAmbientSound({ remember = true } = {}) {
-    ambientRetryTimersRef.current.forEach((timer) => window.clearTimeout(timer));
-    ambientRetryTimersRef.current = [];
-    if (ambientWatchdogRef.current.frame) {
-      window.cancelAnimationFrame(ambientWatchdogRef.current.frame);
-      ambientWatchdogRef.current.frame = 0;
-    }
-    if (ambientSoundRef.current) {
-      ambientSoundRef.current.stop();
-      ambientSoundRef.current = null;
-    }
-
-    setAmbientEnabled(false);
-    if (remember) {
-      ambientPreferenceRef.current = false;
-      window.localStorage.setItem(AMBIENT_STORAGE_KEY, "off");
-    }
-  }
-
-  function kickAmbientWatchdog(durationMs = 12000) {
-    if (!ambientPreferenceRef.current) {
-      return;
-    }
-
-    const now = performance.now();
-    ambientWatchdogRef.current.until = Math.max(ambientWatchdogRef.current.until, now + durationMs);
-
-    if (ambientWatchdogRef.current.frame) {
-      return;
-    }
-
-    const tick = async (timestamp) => {
-      if (!ambientPreferenceRef.current) {
-        ambientWatchdogRef.current.frame = 0;
-        return;
-      }
-
-      if (timestamp > ambientWatchdogRef.current.until) {
-        ambientWatchdogRef.current.frame = 0;
-        return;
-      }
-
-      const soundscape = ambientSoundRef.current;
-      const isRunning = soundscape?.context?.state === "running";
-
-      if (!isRunning && timestamp - ambientWatchdogRef.current.lastAttempt > 700) {
-        ambientWatchdogRef.current.lastAttempt = timestamp;
-        try {
-          await ensureAmbientSound();
-        } catch {
-          // Keep retrying until the watchdog window ends.
-        }
-      } else if (isRunning) {
-        soundscape.setVolume(ambientVolumeRef.current);
-        setAmbientEnabled(true);
-      }
-
-      ambientWatchdogRef.current.frame = window.requestAnimationFrame(tick);
-    };
-
-    ambientWatchdogRef.current.frame = window.requestAnimationFrame(tick);
-  }
-
-  async function ensureAmbientSound() {
-    if (!ambientPreferenceRef.current || ambientRestartingRef.current) {
-      return false;
-    }
-
-    if (ambientSoundRef.current?.context?.state === "running") {
-      ambientSoundRef.current.setVolume(ambientVolumeRef.current);
-      setAmbientEnabled(true);
-      kickAmbientWatchdog(8000);
-      return true;
-    }
-
-    ambientRestartingRef.current = true;
-    try {
-      return await startAmbientSound({ remember: false });
-    } finally {
-      ambientRestartingRef.current = false;
-    }
-  }
-
-  async function startAmbientSound({ remember = true } = {}) {
-    ambientPreferenceRef.current = true;
-    setAmbientEnabled(true);
-
-    if (ambientSoundRef.current) {
-      try {
-        if (ambientSoundRef.current.context.state === "suspended") {
-          await ambientSoundRef.current.context.resume();
-        }
-        if (ambientSoundRef.current.context.state === "running") {
-          setAmbientEnabled(true);
-          if (remember) {
-            window.localStorage.setItem(AMBIENT_STORAGE_KEY, "on");
-          }
-          return true;
-        }
-      } catch (error) {
-        console.warn("Restarting ambient audio after a suspended context:", error);
-      }
-
-      ambientSoundRef.current.stop();
-      ambientSoundRef.current = null;
-      setAmbientEnabled(false);
-    }
-
-    const soundscape = createAmbientSoundscape(ambientVolume);
-    if (!soundscape) {
-      return false;
-    }
-
-    ambientSoundRef.current = soundscape;
-    soundscape.context.onstatechange = () => {
-      if (soundscape.context.state !== "running") {
-        setAmbientEnabled(false);
-      }
-      if (ambientPreferenceRef.current && soundscape.context.state !== "closed") {
-        kickAmbientWatchdog(18000);
-        window.setTimeout(() => {
-          ensureAmbientSound().catch(() => {});
-        }, 180);
-      }
-    };
-    try {
-      await soundscape.context.resume();
-      if (soundscape.context.state !== "running") {
-        throw new Error(`Audio context stayed ${soundscape.context.state}`);
-      }
-      soundscape.setVolume(ambientVolumeRef.current);
-      setAmbientEnabled(true);
-      window.localStorage.setItem(AMBIENT_STORAGE_KEY, "on");
-      kickAmbientWatchdog(18000);
-      return true;
-    } catch (error) {
-      console.warn("Ambient audio is waiting for a user gesture:", error);
-      soundscape.stop();
-      ambientSoundRef.current = null;
-      setAmbientEnabled(false);
-      return false;
-    }
-  }
-
-  async function toggleAmbientSound() {
-    if (ambientSoundRef.current) {
-      stopAmbientSound();
-      return;
-    }
-
-    await startAmbientSound();
-  }
-
-  function handleViewerWakeAmbient() {
-    if (!ambientPreferenceRef.current) {
-      ambientPreferenceRef.current = true;
-      window.localStorage.setItem(AMBIENT_STORAGE_KEY, "on");
-    }
-    kickAmbientWatchdog(18000);
-    ensureAmbientSound().catch(() => {});
   }
 
   function shiftTime(hours) {
@@ -1796,10 +1380,10 @@ export function App() {
         <main
           ref={viewerRef}
           className={`viewer ${isFullscreen ? "is-fullscreen" : ""}`}
-          onClickCapture={handleViewerWakeAmbient}
-          onWheelCapture={handleViewerWakeAmbient}
-          onPointerDownCapture={handleViewerWakeAmbient}
-          onTouchStartCapture={handleViewerWakeAmbient}
+          onClickCapture={wakeAmbient}
+          onWheelCapture={wakeAmbient}
+          onPointerDownCapture={wakeAmbient}
+          onTouchStartCapture={wakeAmbient}
         >
           <PlanetariumCanvas
             scene={sceneState.data}
@@ -1891,10 +1475,10 @@ export function App() {
             </div>
           ) : null}
           <div className="viewer-overlay">
-            {!ambientEnabled ? (
+            {ambientEnabled && ambientStatus !== "playing" ? (
               <div className="overlay-ambient-status">
                 <strong>{ambientStatusLabel}</strong>
-                <span>{dictionary.viewer.ambient.hint}</span>
+                <span>{ambientStatusHint}</span>
               </div>
             ) : null}
             <label className="overlay-volume">

@@ -192,7 +192,11 @@ export const translations = {
         volumeShort: "Volume",
         waiting: "Ambient waiting",
         running: "Ambient playing",
-        hint: "Click, scroll, or tap inside the scene to start the sound."
+        missing: "Ambient track missing",
+        error: "Ambient unavailable",
+        hint: "Click, scroll, or tap inside the scene to start the sound.",
+        missingHint: "Add a loop track to the ambient slot when the theme audio is ready.",
+        errorHint: "Check the configured ambient track path and file availability."
       },
       zoom: "Zoom",
       zoomIn: "Zoom in",
@@ -484,7 +488,11 @@ export const translations = {
         volumeShort: "볼륨",
         waiting: "앰비언트 대기 중",
         running: "앰비언트 재생 중",
-        hint: "장면 안에서 클릭하거나 스크롤하면 사운드가 시작됩니다."
+        missing: "앰비언트 음원 대기 중",
+        error: "앰비언트를 불러오지 못했습니다",
+        hint: "장면 안에서 클릭하거나 스크롤하면 사운드가 시작됩니다.",
+        missingHint: "테마에 맞는 루프 음원을 준비한 뒤 앰비언트 슬롯에 연결해 주세요.",
+        errorHint: "앰비언트 음원 경로나 파일 상태를 확인해 주세요."
       },
       zoom: "줌",
       zoomIn: "줌인",

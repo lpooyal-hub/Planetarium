@@ -213,6 +213,8 @@ function clampCoordinate(value, min = -18, max = 18) {
   return Number(Math.min(max, Math.max(min, value)).toFixed(3));
 }
 
+const VIEW_MODE_ORDER = ["space", "observer", "panorama", "projection"];
+
 export function App() {
   const viewerRef = useRef(null);
   const ambientSoundRef = useRef(null);
@@ -985,27 +987,16 @@ export function App() {
               <>
                 <p className="eyebrow">{dictionary.viewer.viewModeLabel}</p>
                 <div className="constellation-list focus-list">
-                  <button
-                    type="button"
-                    className={`focus-chip ${viewMode === "space" ? "is-active" : ""}`}
-                    onClick={() => setViewMode("space")}
-                  >
-                    {dictionary.viewer.viewModes.space}
-                  </button>
-                  <button
-                    type="button"
-                    className={`focus-chip ${viewMode === "observer" ? "is-active" : ""}`}
-                    onClick={() => setViewMode("observer")}
-                  >
-                    {dictionary.viewer.viewModes.observer}
-                  </button>
-                  <button
-                    type="button"
-                    className={`focus-chip ${viewMode === "panorama" ? "is-active" : ""}`}
-                    onClick={() => setViewMode("panorama")}
-                  >
-                    {dictionary.viewer.viewModes.panorama}
-                  </button>
+                  {VIEW_MODE_ORDER.map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      className={`focus-chip ${viewMode === mode ? "is-active" : ""}`}
+                      onClick={() => setViewMode(mode)}
+                    >
+                      {dictionary.viewer.viewModes[mode]}
+                    </button>
+                  ))}
                 </div>
                 <p className="helper-copy">{sketchViewDescription}</p>
               </>
@@ -1017,27 +1008,16 @@ export function App() {
               <section>
                 <p className="eyebrow">{dictionary.viewer.viewModeLabel}</p>
                 <div className="constellation-list focus-list">
-                  <button
-                    type="button"
-                    className={`focus-chip ${viewMode === "space" ? "is-active" : ""}`}
-                    onClick={() => setViewMode("space")}
-                  >
-                    {dictionary.viewer.viewModes.space}
-                  </button>
-                  <button
-                    type="button"
-                    className={`focus-chip ${viewMode === "observer" ? "is-active" : ""}`}
-                    onClick={() => setViewMode("observer")}
-                  >
-                    {dictionary.viewer.viewModes.observer}
-                  </button>
-                  <button
-                    type="button"
-                    className={`focus-chip ${viewMode === "panorama" ? "is-active" : ""}`}
-                    onClick={() => setViewMode("panorama")}
-                  >
-                    {dictionary.viewer.viewModes.panorama}
-                  </button>
+                  {VIEW_MODE_ORDER.map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      className={`focus-chip ${viewMode === mode ? "is-active" : ""}`}
+                      onClick={() => setViewMode(mode)}
+                    >
+                      {dictionary.viewer.viewModes[mode]}
+                    </button>
+                  ))}
                 </div>
                 <p className="helper-copy">{dictionary.viewer.viewModeDescriptions[viewMode]}</p>
               </section>

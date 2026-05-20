@@ -128,6 +128,7 @@ function CreativeSpaceContents({
   const { camera, pointer } = useThree();
   const spaceMode = viewMode === "space";
   const observerMode = viewMode === "observer";
+  const projectionMode = viewMode === "projection";
   const labelData = useMemo(() => {
     if (!showLabels) {
       return [];
@@ -176,17 +177,17 @@ function CreativeSpaceContents({
   }, [customSpace, showLabels]);
 
   useFrame((_, delta) => {
-    const targetTiltX = spaceMode ? Math.sin(performance.now() * 0.00022) * 0.026 : observerMode ? -pointer.y * 0.034 : -pointer.y * 0.018;
-    const targetYawDrift = spaceMode ? Math.cos(performance.now() * 0.00016) * 0.03 : observerMode ? pointer.x * 0.05 : pointer.x * 0.024;
-    const targetCameraX = spaceMode ? Math.sin(performance.now() * 0.00011) * 1.25 : observerMode ? pointer.x * 0.42 : pointer.x * 1.05;
-    const targetCameraY = spaceMode ? Math.cos(performance.now() * 0.00017) * 0.58 : observerMode ? 0.48 + pointer.y * 0.28 : pointer.y * 0.48;
-    const targetCameraZ = spaceMode ? -1.15 : observerMode ? -0.2 : 0;
-    const targetLookX = spaceMode ? Math.sin(performance.now() * 0.00014) * 4.8 : observerMode ? pointer.x * 1.6 : pointer.x * 4.2;
-    const targetLookY = spaceMode ? Math.cos(performance.now() * 0.00013) * 1.25 : observerMode ? 2.1 + pointer.y * 1.1 : pointer.y * 1.55;
-    const targetLookZ = spaceMode ? -12.6 : observerMode ? -13 : -12.2;
+    const targetTiltX = projectionMode ? 0 : spaceMode ? Math.sin(performance.now() * 0.00022) * 0.026 : observerMode ? -pointer.y * 0.034 : -pointer.y * 0.018;
+    const targetYawDrift = projectionMode ? 0 : spaceMode ? Math.cos(performance.now() * 0.00016) * 0.03 : observerMode ? pointer.x * 0.05 : pointer.x * 0.024;
+    const targetCameraX = projectionMode ? 0 : spaceMode ? Math.sin(performance.now() * 0.00011) * 1.25 : observerMode ? pointer.x * 0.42 : pointer.x * 1.05;
+    const targetCameraY = projectionMode ? 0 : spaceMode ? Math.cos(performance.now() * 0.00017) * 0.58 : observerMode ? 0.48 + pointer.y * 0.28 : pointer.y * 0.48;
+    const targetCameraZ = projectionMode ? -0.6 : spaceMode ? -1.15 : observerMode ? -0.2 : 0;
+    const targetLookX = projectionMode ? 0 : spaceMode ? Math.sin(performance.now() * 0.00014) * 4.8 : observerMode ? pointer.x * 1.6 : pointer.x * 4.2;
+    const targetLookY = projectionMode ? 0 : spaceMode ? Math.cos(performance.now() * 0.00013) * 1.25 : observerMode ? 2.1 + pointer.y * 1.1 : pointer.y * 1.55;
+    const targetLookZ = projectionMode ? -13.5 : spaceMode ? -12.6 : observerMode ? -13 : -12.2;
 
     if (groupRef.current) {
-      if (autoRotate) {
+      if (autoRotate && !projectionMode) {
         groupRef.current.rotation.y += delta * (spaceMode ? 0.012 : observerMode ? 0.009 : 0.0045);
       }
       rotationAnchor.current.x = THREE.MathUtils.damp(rotationAnchor.current.x, targetTiltX, spaceMode ? 2.2 : 3.8, delta);
@@ -204,9 +205,11 @@ function CreativeSpaceContents({
 
     camera.position.x = cameraAnchor.current.x;
     camera.position.y = cameraAnchor.current.y;
-    const baseDistance = spaceMode ? 15.1 : observerMode ? 16.8 : 14.4;
+    const baseDistance = projectionMode ? 16.2 : spaceMode ? 15.1 : observerMode ? 16.8 : 14.4;
     const zoomMultiplier = THREE.MathUtils.lerp(1.28, 0.72, zoomLevel);
     camera.position.z = baseDistance * zoomMultiplier + cameraAnchor.current.z;
+    camera.fov = THREE.MathUtils.damp(camera.fov, projectionMode ? 34 : 48, 4.4, delta);
+    camera.updateProjectionMatrix();
     camera.lookAt(lookAnchor.current.x, lookAnchor.current.y, lookAnchor.current.z);
   });
 
@@ -219,7 +222,8 @@ function CreativeSpaceContents({
         <DeepSkyField viewMode={viewMode} />
         {spaceMode ? <SpaceDepthField /> : null}
         {showGuides ? <GuideGrid /> : null}
-        {showGuides && !spaceMode ? <HorizonRing dictionary={dictionary} language={language} /> : null}
+        {showGuides && projectionMode ? <ProjectionGuide dictionary={dictionary} language={language} /> : null}
+        {showGuides && !spaceMode && !projectionMode ? <HorizonRing dictionary={dictionary} language={language} /> : null}
         <CreativePlacementPlane creativeTool={creativeTool} onCreativeSpaceClick={onCreativeSpaceClick} />
         <CreativeConstellationLines customSpace={customSpace} />
         {customSpace?.stars.map((star) => (
@@ -271,6 +275,7 @@ function SceneContents({
   const rotationAnchor = useRef({ x: 0, y: 0 });
   const { camera, pointer } = useThree();
   const spaceMode = viewMode === "space";
+  const projectionMode = viewMode === "projection";
   const projectedStars = useMemo(() => scene.stars.map((star) => ({ ...star, ...projectSkyPosition(star, viewMode) })), [scene.stars, viewMode]);
 
   const featuredStars = useMemo(
@@ -345,14 +350,14 @@ function SceneContents({
     const driftA = clock.elapsedTime * 0.085;
     const driftB = clock.elapsedTime * 0.052;
     const trackWeight = trackedCenter ? 1 : 0;
-    const targetTiltX = trackedCenter ? 0 : spaceMode ? Math.sin(driftB) * 0.018 : observerMode ? -0.12 - pointer.y * 0.028 : -pointer.y * 0.01;
-    const targetYawDrift = trackedCenter ? 0 : spaceMode ? Math.sin(driftA) * 0.022 : observerMode ? pointer.x * 0.03 : pointer.x * 0.018;
-    const baseCameraX = spaceMode ? Math.sin(driftA) * 0.55 : observerMode ? pointer.x * 0.18 : pointer.x * 0.26;
-    const baseCameraY = spaceMode ? Math.cos(driftB) * 0.32 : observerMode ? -1.1 + pointer.y * 0.18 : -0.15 + pointer.y * 0.08;
-    const targetCameraZ = spaceMode ? -11.8 + Math.sin(driftA * 0.7) * 0.18 : observerMode ? -0.65 : -0.42;
-    const baseLookX = spaceMode ? Math.sin(driftA * 0.8) * 2.2 : observerMode ? pointer.x * 0.9 : pointer.x * 1.45;
-    const baseLookY = spaceMode ? Math.cos(driftB * 1.15) * 0.85 : observerMode ? 1.8 + pointer.y * 0.75 : 2.35 + pointer.y * 0.46;
-    const baseLookZ = spaceMode ? 0 : observerMode ? -13.4 : -14.6;
+    const targetTiltX = trackedCenter || projectionMode ? 0 : spaceMode ? Math.sin(driftB) * 0.018 : observerMode ? -0.12 - pointer.y * 0.028 : -pointer.y * 0.01;
+    const targetYawDrift = trackedCenter || projectionMode ? 0 : spaceMode ? Math.sin(driftA) * 0.022 : observerMode ? pointer.x * 0.03 : pointer.x * 0.018;
+    const baseCameraX = projectionMode ? 0 : spaceMode ? Math.sin(driftA) * 0.55 : observerMode ? pointer.x * 0.18 : pointer.x * 0.26;
+    const baseCameraY = projectionMode ? 0 : spaceMode ? Math.cos(driftB) * 0.32 : observerMode ? -1.1 + pointer.y * 0.18 : -0.15 + pointer.y * 0.08;
+    const targetCameraZ = projectionMode ? -0.65 : spaceMode ? -11.8 + Math.sin(driftA * 0.7) * 0.18 : observerMode ? -0.65 : -0.42;
+    const baseLookX = projectionMode ? 0 : spaceMode ? Math.sin(driftA * 0.8) * 2.2 : observerMode ? pointer.x * 0.9 : pointer.x * 1.45;
+    const baseLookY = projectionMode ? 0 : spaceMode ? Math.cos(driftB * 1.15) * 0.85 : observerMode ? 1.8 + pointer.y * 0.75 : 2.35 + pointer.y * 0.46;
+    const baseLookZ = projectionMode ? -13.5 : spaceMode ? 0 : observerMode ? -13.4 : -14.6;
     const targetCameraX = THREE.MathUtils.lerp(baseCameraX, trackedCenter ? trackedCenter.x * 0.08 : baseCameraX, trackWeight);
     const targetCameraY = THREE.MathUtils.lerp(baseCameraY, trackedCenter ? baseCameraY + trackedCenter.y * 0.035 : baseCameraY, trackWeight);
     const targetLookX = THREE.MathUtils.lerp(baseLookX, trackedCenter ? trackedCenter.x : baseLookX, trackWeight);
@@ -360,7 +365,7 @@ function SceneContents({
     const targetLookZ = THREE.MathUtils.lerp(baseLookZ, trackedCenter ? trackedCenter.z : baseLookZ, trackWeight);
 
     if (groupRef.current) {
-      if (autoRotate && !trackedCenter) {
+      if (autoRotate && !trackedCenter && !projectionMode) {
         groupRef.current.rotation.y += delta * (spaceMode ? 0.013 : observerMode ? 0.011 : 0.008);
       }
       rotationAnchor.current.x = THREE.MathUtils.damp(rotationAnchor.current.x, targetTiltX, spaceMode ? 2.1 : observerMode ? 4.2 : 5.4, delta);
@@ -379,10 +384,25 @@ function SceneContents({
 
     camera.position.x = cameraAnchor.current.x;
     camera.position.y = cameraAnchor.current.y;
-    const baseDistance = trackedCenter ? (spaceMode ? 18.8 : observerMode ? 10.4 : 12.4) : spaceMode ? 13.7 : observerMode ? 7.2 : 9.4;
+    const baseDistance = trackedCenter
+      ? projectionMode
+        ? 15.6
+        : spaceMode
+          ? 18.8
+          : observerMode
+            ? 10.4
+            : 12.4
+      : projectionMode
+        ? 14.8
+        : spaceMode
+          ? 13.7
+          : observerMode
+            ? 7.2
+            : 9.4;
     const zoomMultiplier = THREE.MathUtils.lerp(1.45, 0.7, zoomLevel);
     camera.position.z = baseDistance * zoomMultiplier + cameraAnchor.current.z;
-    camera.fov = THREE.MathUtils.damp(camera.fov, THREE.MathUtils.lerp(58, 30, zoomLevel), 5.2, delta);
+    const targetFov = projectionMode ? THREE.MathUtils.lerp(44, 26, zoomLevel) : THREE.MathUtils.lerp(58, 30, zoomLevel);
+    camera.fov = THREE.MathUtils.damp(camera.fov, targetFov, 5.2, delta);
     camera.updateProjectionMatrix();
     camera.lookAt(lookAnchor.current.x, lookAnchor.current.y, lookAnchor.current.z);
   });
@@ -397,8 +417,9 @@ function SceneContents({
         <DeepSkyField viewMode={viewMode} atmosphereStrength={atmosphereStrength} />
         {viewMode === "space" ? <SpaceDepthField atmosphereStrength={atmosphereStrength} /> : null}
         <BackgroundStarField stars={projectedStars} focusedConstellation={focusedConstellation} starGlowStrength={starGlowStrength} />
-        {showGuides ? <GuideGrid /> : null}
-        {showGuides ? <HorizonRing dictionary={dictionary} language={language} /> : null}
+        {showGuides && !projectionMode ? <GuideGrid /> : null}
+        {showGuides && projectionMode ? <ProjectionGuide dictionary={dictionary} language={language} /> : null}
+        {showGuides && !projectionMode ? <HorizonRing dictionary={dictionary} language={language} /> : null}
         {showConstellations ? <ConstellationLines lines={scene.lines} stars={projectedStars} focusedConstellation={focusedConstellation} viewMode={viewMode} /> : null}
         {customSketchStarIds.length >= 2 ? <CustomSketchLines stars={projectedStars} starIds={customSketchStarIds} viewMode={viewMode} /> : null}
         {spaceMode
@@ -915,6 +936,12 @@ function projectSkyPosition(star, viewMode) {
     x = direction.x * radius * 1.05 + swirlX;
     y = direction.y * radius * 1.02 + swirlY;
     z = direction.z * radius * 0.88 + swirlZ;
+  } else if (viewMode === "projection") {
+    const zenithDistance = (90 - Math.max(0, star.altitude)) / 90;
+    const domeRadius = THREE.MathUtils.lerp(0.35, 11.6, zenithDistance);
+    x = Math.sin(azWrapped) * domeRadius;
+    y = Math.cos(azWrapped) * domeRadius;
+    z = -13.4 + altitudeRatio * 0.35;
   } else if (viewMode === "panorama") {
     const horizontalRatio = azWrapped / Math.PI;
     const horizonSpread = 22.5;
@@ -936,6 +963,51 @@ function projectSkyPosition(star, viewMode) {
     y: Number(y.toFixed(4)),
     z: Number(z.toFixed(4))
   };
+}
+
+function ProjectionGuide({ dictionary, language }) {
+  const ringGeometry = useMemo(() => {
+    const points = [];
+    for (let index = 0; index <= 144; index += 1) {
+      const angle = (index / 144) * Math.PI * 2;
+      points.push(Math.sin(angle) * 11.6, Math.cos(angle) * 11.6, -13.35);
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
+    return geometry;
+  }, []);
+
+  const altitudeGeometries = useMemo(() => {
+    return [30, 60].map((altitude) => {
+      const points = [];
+      const zenithDistance = (90 - altitude) / 90;
+      const radius = THREE.MathUtils.lerp(0.35, 11.6, zenithDistance);
+      for (let index = 0; index <= 120; index += 1) {
+        const angle = (index / 120) * Math.PI * 2;
+        points.push(Math.sin(angle) * radius, Math.cos(angle) * radius, -13.35);
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
+      return geometry;
+    });
+  }, []);
+
+  return (
+    <>
+      <line geometry={ringGeometry}>
+        <lineBasicMaterial color="#ffcf70" transparent opacity={0.34} />
+      </line>
+      {altitudeGeometries.map((geometry, index) => (
+        <line key={index} geometry={geometry}>
+          <lineBasicMaterial color="#7adcd4" transparent opacity={0.16} />
+        </line>
+      ))}
+      <TextSprite text={dictionary.viewer.cardinals.north[language]} position={[0, 12.3, -13.3]} color="#ffcf70" scale={1.7} />
+      <TextSprite text={dictionary.viewer.cardinals.east[language]} position={[12.35, 0, -13.3]} color="#ffcf70" scale={1.7} />
+      <TextSprite text={dictionary.viewer.cardinals.south[language]} position={[0, -12.3, -13.3]} color="#ffcf70" scale={1.7} />
+      <TextSprite text={dictionary.viewer.cardinals.west[language]} position={[-12.35, 0, -13.3]} color="#ffcf70" scale={1.7} />
+    </>
+  );
 }
 
 function HorizonRing({ dictionary, language }) {

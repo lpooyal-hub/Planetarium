@@ -176,12 +176,14 @@ export const translations = {
       viewModes: {
         space: "Space drift",
         observer: "Observer view",
-        panorama: "Panorama view"
+        panorama: "Panorama view",
+        projection: "Dome projection"
       },
       viewModeDescriptions: {
         space: "A floating, in-space feeling where the constellations surround you instead of sitting on a dome.",
         observer: "An upward-looking sky that feels closer to standing under the constellations.",
-        panorama: "A flatter, wider night sky that spreads more calmly across the screen."
+        panorama: "A flatter, wider night sky that spreads more calmly across the screen.",
+        projection: "A fulldome-style fisheye layout prepared for overhead dome or ceiling projection work."
       },
       ambient: {
         on: "Ambient on",
@@ -301,7 +303,8 @@ export const translations = {
         modes: {
           space: "A drifting space view where stars feel like they surround you instead of forming a dome",
           observer: "An upward night sky where the constellations hang overhead more naturally",
-          panorama: "A wider night sky that stretches gently across the whole frame"
+          panorama: "A wider night sky that stretches gently across the whole frame",
+          projection: "A circular fulldome projection layout shaped for dedicated dome or ceiling display"
         },
         inspect: "Click stars to inspect them",
         screensaver: "Pure screensaver mode with slow camera drift",
@@ -453,12 +456,14 @@ export const translations = {
       viewModes: {
         space: "우주 시점",
         observer: "관측자 시점",
-        panorama: "파노라마 시점"
+        panorama: "파노라마 시점",
+        projection: "돔 프로젝션"
       },
       viewModeDescriptions: {
         space: "별자리가 돔처럼 얹히기보다, 내가 우주에 떠 있는 듯 주변을 감싸는 시점입니다.",
         observer: "별자리 아래에 서서 올려다보는 느낌에 더 가까운 시점입니다.",
-        panorama: "화면 전체에 하늘이 넓게 퍼지는 더 평평한 감상용 시점입니다."
+        panorama: "화면 전체에 하늘이 넓게 퍼지는 더 평평한 감상용 시점입니다.",
+        projection: "위쪽으로 쏘는 전용 프로젝터를 염두에 둔 fulldome 형태의 원형 투영 시점입니다."
       },
       ambient: {
         on: "앰비언트 켜기",
@@ -578,7 +583,8 @@ export const translations = {
         modes: {
           space: "별자리가 돔처럼 얹히지 않고, 우주에서 둘러싸인 듯 보이는 시점",
           observer: "머리 위로 별자리가 걸린 듯한, 올려다보는 밤하늘",
-          panorama: "화면 전체에 하늘이 더 넓게 펼쳐지는 파노라마 밤하늘"
+          panorama: "화면 전체에 하늘이 더 넓게 펼쳐지는 파노라마 밤하늘",
+          projection: "전용 천장·돔 프로젝션을 위한 원형 fulldome 투영 시점"
         },
         inspect: "별을 눌러 상세 정보를 확인",
         screensaver: "느린 카메라 전환으로 감상하는 화면보호기 모드",

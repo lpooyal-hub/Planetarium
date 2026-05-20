@@ -219,6 +219,8 @@ export function App() {
   const viewerRef = useRef(null);
   const ambientSoundRef = useRef(null);
   const ambientPreferenceRef = useRef(window.localStorage.getItem(AMBIENT_STORAGE_KEY) !== "off");
+  const ambientRestartingRef = useRef(false);
+  const ambientVolumeRef = useRef(getInitialAmbientVolume());
   const [currentPage, setCurrentPage] = useState("watch");
   const [language, setLanguage] = useState(getInitialLanguage);
   const [observer, setObserver] = useState(defaultObserver);
@@ -290,7 +292,7 @@ export function App() {
       if (!ambientPreferenceRef.current) {
         return;
       }
-      startAmbientSound({ remember: false }).catch(() => {});
+      ensureAmbientSound().catch(() => {});
     };
     const retryWhenVisible = () => {
       if (document.visibilityState === "visible") {
@@ -305,24 +307,31 @@ export function App() {
         retryAmbient();
         return;
       }
-      ambientSoundRef.current.context.resume().catch(() => {});
+      ambientSoundRef.current.setVolume(ambientVolumeRef.current);
+      ambientSoundRef.current.context.resume().catch(() => {
+        retryAmbient();
+      });
     }, 3500);
 
     retryAmbient();
     window.addEventListener("pointerdown", retryAmbient, { passive: true });
+    window.addEventListener("click", retryAmbient, { passive: true });
     window.addEventListener("keydown", retryAmbient);
     window.addEventListener("touchstart", retryAmbient, { passive: true });
     window.addEventListener("focus", retryAmbient);
     window.addEventListener("pageshow", retryAmbient);
+    window.addEventListener("online", retryAmbient);
     document.addEventListener("visibilitychange", retryWhenVisible);
 
     return () => {
       window.clearInterval(interval);
       window.removeEventListener("pointerdown", retryAmbient);
+      window.removeEventListener("click", retryAmbient);
       window.removeEventListener("keydown", retryAmbient);
       window.removeEventListener("touchstart", retryAmbient);
       window.removeEventListener("focus", retryAmbient);
       window.removeEventListener("pageshow", retryAmbient);
+      window.removeEventListener("online", retryAmbient);
       document.removeEventListener("visibilitychange", retryWhenVisible);
     };
   }, []);
@@ -332,6 +341,7 @@ export function App() {
   }, [savedSketches]);
 
   useEffect(() => {
+    ambientVolumeRef.current = ambientVolume;
     window.localStorage.setItem(AMBIENT_VOLUME_STORAGE_KEY, String(ambientVolume));
     ambientSoundRef.current?.setVolume(ambientVolume);
   }, [ambientVolume]);
@@ -835,6 +845,25 @@ export function App() {
     }
   }
 
+  async function ensureAmbientSound() {
+    if (!ambientPreferenceRef.current || ambientRestartingRef.current) {
+      return false;
+    }
+
+    if (ambientSoundRef.current?.context?.state === "running") {
+      ambientSoundRef.current.setVolume(ambientVolumeRef.current);
+      setAmbientEnabled(true);
+      return true;
+    }
+
+    ambientRestartingRef.current = true;
+    try {
+      return await startAmbientSound({ remember: false });
+    } finally {
+      ambientRestartingRef.current = false;
+    }
+  }
+
   async function startAmbientSound({ remember = true } = {}) {
     ambientPreferenceRef.current = true;
 
@@ -865,11 +894,22 @@ export function App() {
     }
 
     ambientSoundRef.current = soundscape;
+    soundscape.context.onstatechange = () => {
+      if (soundscape.context.state !== "running") {
+        setAmbientEnabled(false);
+      }
+      if (ambientPreferenceRef.current && soundscape.context.state !== "closed") {
+        window.setTimeout(() => {
+          ensureAmbientSound().catch(() => {});
+        }, 180);
+      }
+    };
     try {
       await soundscape.context.resume();
       if (soundscape.context.state !== "running") {
         throw new Error(`Audio context stayed ${soundscape.context.state}`);
       }
+      soundscape.setVolume(ambientVolumeRef.current);
       setAmbientEnabled(true);
       window.localStorage.setItem(AMBIENT_STORAGE_KEY, "on");
       return true;

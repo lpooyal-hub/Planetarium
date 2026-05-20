@@ -352,11 +352,11 @@ function SceneContents({
     const trackWeight = trackedCenter ? 1 : 0;
     const targetTiltX = trackedCenter || projectionMode || observerMode ? 0 : spaceMode ? Math.sin(driftB) * 0.018 : -pointer.y * 0.01;
     const targetYawDrift = trackedCenter || projectionMode || observerMode ? 0 : spaceMode ? Math.sin(driftA) * 0.022 : pointer.x * 0.018;
-    const baseCameraX = projectionMode ? 0 : spaceMode ? Math.sin(driftA) * 0.55 : observerMode ? pointer.x * 0.18 : pointer.x * 0.26;
-    const baseCameraY = projectionMode ? 0 : spaceMode ? Math.cos(driftB) * 0.32 : observerMode ? pointer.y * 0.14 : -0.15 + pointer.y * 0.08;
+    const baseCameraX = projectionMode ? 0 : spaceMode ? Math.sin(driftA) * 0.55 : observerMode ? pointer.x * 0.06 : pointer.x * 0.26;
+    const baseCameraY = projectionMode ? 0 : spaceMode ? Math.cos(driftB) * 0.32 : observerMode ? pointer.y * 0.03 : -0.15 + pointer.y * 0.08;
     const targetCameraZ = projectionMode ? -0.65 : spaceMode ? -11.8 + Math.sin(driftA * 0.7) * 0.18 : observerMode ? 0.3 : -0.42;
-    const baseLookX = projectionMode ? 0 : spaceMode ? Math.sin(driftA * 0.8) * 2.2 : observerMode ? pointer.x * 0.65 : pointer.x * 1.45;
-    const baseLookY = projectionMode ? 0 : spaceMode ? Math.cos(driftB * 1.15) * 0.85 : observerMode ? 9 + pointer.y * 0.55 : 2.35 + pointer.y * 0.46;
+    const baseLookX = projectionMode ? 0 : spaceMode ? Math.sin(driftA * 0.8) * 2.2 : observerMode ? pointer.x * 0.28 : pointer.x * 1.45;
+    const baseLookY = projectionMode ? 0 : spaceMode ? Math.cos(driftB * 1.15) * 0.85 : observerMode ? 9.4 + pointer.y * 0.18 : 2.35 + pointer.y * 0.46;
     const baseLookZ = projectionMode ? -13.5 : spaceMode ? 0 : observerMode ? 0 : -14.6;
     const targetCameraX = THREE.MathUtils.lerp(baseCameraX, trackedCenter ? trackedCenter.x * 0.08 : baseCameraX, trackWeight);
     const targetCameraY = THREE.MathUtils.lerp(baseCameraY, trackedCenter ? baseCameraY + trackedCenter.y * (observerMode ? 0.02 : 0.035) : baseCameraY, trackWeight);
@@ -368,19 +368,19 @@ function SceneContents({
       if (autoRotate && !trackedCenter && !projectionMode && !observerMode) {
         groupRef.current.rotation.y += delta * (spaceMode ? 0.013 : 0.008);
       }
-      rotationAnchor.current.x = THREE.MathUtils.damp(rotationAnchor.current.x, targetTiltX, spaceMode ? 2.1 : observerMode ? 5 : 5.4, delta);
-      rotationAnchor.current.y = THREE.MathUtils.damp(rotationAnchor.current.y, targetYawDrift, spaceMode ? 2 : observerMode ? 5 : 4.8, delta);
+      rotationAnchor.current.x = THREE.MathUtils.damp(rotationAnchor.current.x, targetTiltX, spaceMode ? 2.1 : observerMode ? 7.5 : 5.4, delta);
+      rotationAnchor.current.y = THREE.MathUtils.damp(rotationAnchor.current.y, targetYawDrift, spaceMode ? 2 : observerMode ? 7.5 : 4.8, delta);
       groupRef.current.rotation.x = rotationAnchor.current.x;
       groupRef.current.rotation.y += rotationAnchor.current.y * delta;
     }
 
-    cameraAnchor.current.x = THREE.MathUtils.damp(cameraAnchor.current.x, targetCameraX, spaceMode ? 2.1 : observerMode ? 5.2 : 5.1, delta);
-    cameraAnchor.current.y = THREE.MathUtils.damp(cameraAnchor.current.y, targetCameraY, spaceMode ? 2.1 : observerMode ? 5.2 : 5.1, delta);
-    cameraAnchor.current.z = THREE.MathUtils.damp(cameraAnchor.current.z, targetCameraZ, spaceMode ? 2.4 : observerMode ? 5.6 : 5.4, delta);
+    cameraAnchor.current.x = THREE.MathUtils.damp(cameraAnchor.current.x, targetCameraX, spaceMode ? 2.1 : observerMode ? 7.8 : 5.1, delta);
+    cameraAnchor.current.y = THREE.MathUtils.damp(cameraAnchor.current.y, targetCameraY, spaceMode ? 2.1 : observerMode ? 7.8 : 5.1, delta);
+    cameraAnchor.current.z = THREE.MathUtils.damp(cameraAnchor.current.z, targetCameraZ, spaceMode ? 2.4 : observerMode ? 8.1 : 5.4, delta);
 
-    lookAnchor.current.x = THREE.MathUtils.damp(lookAnchor.current.x, targetLookX, spaceMode ? 2.2 : observerMode ? 5.4 : 5.4, delta);
-    lookAnchor.current.y = THREE.MathUtils.damp(lookAnchor.current.y, targetLookY, spaceMode ? 2.2 : observerMode ? 5.4 : 5.4, delta);
-    lookAnchor.current.z = THREE.MathUtils.damp(lookAnchor.current.z, targetLookZ, spaceMode ? 2.4 : observerMode ? 5.8 : 5.7, delta);
+    lookAnchor.current.x = THREE.MathUtils.damp(lookAnchor.current.x, targetLookX, spaceMode ? 2.2 : observerMode ? 7.4 : 5.4, delta);
+    lookAnchor.current.y = THREE.MathUtils.damp(lookAnchor.current.y, targetLookY, spaceMode ? 2.2 : observerMode ? 7.4 : 5.4, delta);
+    lookAnchor.current.z = THREE.MathUtils.damp(lookAnchor.current.z, targetLookZ, spaceMode ? 2.4 : observerMode ? 7.8 : 5.7, delta);
 
     if (observerMode) {
       const observerLift = trackedCenter ? THREE.MathUtils.lerp(10.6, 6.8, zoomLevel) : THREE.MathUtils.lerp(11.6, 7.6, zoomLevel);
@@ -405,7 +405,7 @@ function SceneContents({
       camera.position.z = baseDistance * zoomMultiplier + cameraAnchor.current.z;
     }
     const targetFov = observerMode
-      ? THREE.MathUtils.lerp(74, 48, zoomLevel)
+      ? THREE.MathUtils.lerp(92, 62, zoomLevel)
       : projectionMode
         ? THREE.MathUtils.lerp(44, 26, zoomLevel)
         : THREE.MathUtils.lerp(58, 30, zoomLevel);
@@ -728,6 +728,7 @@ function CreativePlanet({ planet, selected, onSelectTarget }) {
 
 function StarMarker({ star, selected, onSelectTarget, dimmed, sketched, drawMode }) {
   const haloRef = useRef(null);
+  const selectionRef = useRef(null);
   const spriteMaterial = useMemo(
     () =>
       new THREE.SpriteMaterial({
@@ -736,6 +737,15 @@ function StarMarker({ star, selected, onSelectTarget, dimmed, sketched, drawMode
         depthWrite: false
       }),
     [drawMode, sketched, star.color]
+  );
+  const selectionMaterial = useMemo(
+    () =>
+      new THREE.SpriteMaterial({
+        map: buildRingTexture("#ffe8a3"),
+        transparent: true,
+        depthWrite: false
+      }),
+    []
   );
   const radius = star.size * (selected ? 2.35 : sketched ? 1.85 : dimmed ? 1.05 : 1.55);
   const emissive = star.visible ? star.color : "#334155";
@@ -750,15 +760,24 @@ function StarMarker({ star, selected, onSelectTarget, dimmed, sketched, drawMode
     const pulse = 1 + Math.sin(clock.elapsedTime * 1.1 + pulseSeed) * 0.08;
     haloRef.current.scale.setScalar(pulse);
     haloRef.current.material.opacity = (sketched ? 0.3 : 0.16) + (selected ? 0.12 : 0) + Math.sin(clock.elapsedTime * 0.9 + pulseSeed) * 0.025;
+
+    if (selectionRef.current) {
+      const selectionPulse = 1 + Math.sin(clock.elapsedTime * 1.45 + pulseSeed) * 0.05;
+      selectionRef.current.scale.set(selectionPulse, selectionPulse, 1);
+      selectionRef.current.material.opacity = 0.34 + Math.sin(clock.elapsedTime * 1.2 + pulseSeed) * 0.04;
+    }
   });
 
   return (
     <group position={[star.x, star.y, star.z]}>
-      {selected || sketched ? (
+      {sketched ? (
         <mesh>
           <sphereGeometry args={[radius * 2.9, 24, 24]} />
-          <meshBasicMaterial color={sketched ? "#ffcf70" : star.color} transparent opacity={sketched ? 0.2 : 0.13} />
+          <meshBasicMaterial color="#ffcf70" transparent opacity={0.2} />
         </mesh>
+      ) : null}
+      {selected ? (
+        <sprite ref={selectionRef} material={selectionMaterial} scale={[radius * 7.4, radius * 7.4, 1]} />
       ) : null}
       <sprite ref={haloRef} material={spriteMaterial} scale={[radius * 6.5, radius * 6.5, 1]} />
       <mesh onClick={() => onSelectTarget({ kind: "star", id: star.id })}>
@@ -915,6 +934,26 @@ function buildConstellationCenters(stars) {
   }
 
   return centers;
+}
+
+function buildRingTexture(color = "#ffe8a3") {
+  const size = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  const gradient = context.createRadialGradient(size / 2, size / 2, size * 0.18, size / 2, size / 2, size / 2);
+  gradient.addColorStop(0, "rgba(255,255,255,0)");
+  gradient.addColorStop(0.55, "rgba(255,255,255,0)");
+  gradient.addColorStop(0.72, color);
+  gradient.addColorStop(0.88, "rgba(255,255,255,0.18)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, size, size);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
 }
 
 function clampStarSize(magnitude) {

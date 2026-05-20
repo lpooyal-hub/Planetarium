@@ -218,7 +218,7 @@ const VIEW_MODE_ORDER = ["space", "observer", "panorama", "projection"];
 export function App() {
   const viewerRef = useRef(null);
   const ambientSoundRef = useRef(null);
-  const ambientPreferenceRef = useRef(window.localStorage.getItem(AMBIENT_STORAGE_KEY) !== "off");
+  const ambientPreferenceRef = useRef(true);
   const ambientRestartingRef = useRef(false);
   const ambientVolumeRef = useRef(getInitialAmbientVolume());
   const ambientWatchdogRef = useRef({ frame: 0, until: 0, lastAttempt: 0 });
@@ -472,6 +472,38 @@ export function App() {
   const activeConstellationStory =
     (activeConstellationKey && dictionary.viewer.constellationMoods?.[activeConstellationKey]?.[language]) || dictionary.viewer.constellationFallback;
   const sketchViewDescription = dictionary.viewer.viewModeDescriptions[viewMode];
+  const currentViewConstellations = useMemo(() => {
+    const stars = sceneState.data?.stars || [];
+    if (!stars.length) {
+      return [];
+    }
+
+    const minAltitude = viewMode === "observer" ? 28 : viewMode === "panorama" ? 18 : viewMode === "projection" ? 22 : 12;
+    const minStars = viewMode === "space" ? 2 : 3;
+    const bucket = new Map();
+
+    stars.forEach((star) => {
+      if (!star.visible || star.constellation === "Unknown" || star.altitude < minAltitude) {
+        return;
+      }
+      const current = bucket.get(star.constellation) || { count: 0, altitude: 0, magnitude: 0 };
+      bucket.set(star.constellation, {
+        count: current.count + 1,
+        altitude: current.altitude + star.altitude,
+        magnitude: current.magnitude + star.magnitude
+      });
+    });
+
+    return [...bucket.entries()]
+      .filter(([, value]) => value.count >= minStars)
+      .map(([name, value]) => ({
+        name,
+        score: value.count * 3 + value.altitude / value.count / 14 - value.magnitude / value.count / 3
+      }))
+      .sort((left, right) => right.score - left.score)
+      .slice(0, 10)
+      .map((item) => item.name);
+  }, [sceneState.data?.stars, viewMode]);
 
   useEffect(() => {
     if (!visibleConstellations.length) {
@@ -1136,7 +1168,7 @@ export function App() {
                   <span>{dictionary.viewer.focusConstellation}</span>
                   <select value={focusedConstellation} onChange={(event) => setFocusedConstellation(event.target.value)}>
                     <option value="all">{dictionary.viewer.allSky}</option>
-                    {filteredConstellations.map((name) => (
+                    {(filteredConstellations.length ? filteredConstellations : visibleConstellations).map((name) => (
                       <option key={name} value={name}>
                         {dictionary.constellations?.[name]?.[language] || name}
                       </option>
@@ -1493,7 +1525,7 @@ export function App() {
                 <span>{dictionary.viewer.focusConstellation}</span>
                 <select value={focusedConstellation} onChange={(event) => setFocusedConstellation(event.target.value)}>
                   <option value="all">{dictionary.viewer.allSky}</option>
-                  {filteredConstellations.map((name) => (
+                  {(filteredConstellations.length ? filteredConstellations : visibleConstellations).map((name) => (
                     <option key={name} value={name}>
                       {dictionary.constellations?.[name]?.[language] || name}
                     </option>
@@ -1693,7 +1725,7 @@ export function App() {
               <section>
                 <p className="eyebrow">{dictionary.viewer.constellationsInFrame}</p>
                 <div className="constellation-list">
-                  {(sceneState.data?.summary.visibleConstellations || []).map((name) => (
+                  {currentViewConstellations.map((name) => (
                     <span key={name}>{dictionary.constellations?.[name]?.[language] || name}</span>
                   ))}
                 </div>

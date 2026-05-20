@@ -222,6 +222,7 @@ export function App() {
   const ambientRestartingRef = useRef(false);
   const ambientVolumeRef = useRef(getInitialAmbientVolume());
   const ambientWatchdogRef = useRef({ frame: 0, until: 0, lastAttempt: 0 });
+  const ambientRetryTimersRef = useRef([]);
   const [currentPage, setCurrentPage] = useState("watch");
   const [language, setLanguage] = useState(getInitialLanguage);
   const [observer, setObserver] = useState(defaultObserver);
@@ -249,7 +250,7 @@ export function App() {
   const [activeSketchId, setActiveSketchId] = useState("draft");
   const [customSpace, setCustomSpace] = useState(() => createBlankSpaceScene());
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [ambientEnabled, setAmbientEnabled] = useState(false);
+  const [ambientEnabled, setAmbientEnabled] = useState(true);
   const [ambientVolume, setAmbientVolume] = useState(getInitialAmbientVolume);
   const dictionary = translations[language];
 
@@ -277,6 +278,8 @@ export function App() {
   useEffect(
     () => {
       return () => {
+        ambientRetryTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+        ambientRetryTimersRef.current = [];
         if (ambientWatchdogRef.current.frame) {
           window.cancelAnimationFrame(ambientWatchdogRef.current.frame);
         }
@@ -292,12 +295,26 @@ export function App() {
       return undefined;
     }
 
+    const scheduleAmbientRetries = (durations = [180, 900, 2200, 4200]) => {
+      ambientRetryTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+      ambientRetryTimersRef.current = durations.map((delay) =>
+        window.setTimeout(() => {
+          if (!ambientPreferenceRef.current) {
+            return;
+          }
+          kickAmbientWatchdog(18000);
+          ensureAmbientSound().catch(() => {});
+        }, delay)
+      );
+    };
+
     const retryAmbient = () => {
       if (!ambientPreferenceRef.current) {
         return;
       }
-      kickAmbientWatchdog(12000);
+      kickAmbientWatchdog(18000);
       ensureAmbientSound().catch(() => {});
+      scheduleAmbientRetries();
     };
     const retryWhenVisible = () => {
       if (document.visibilityState === "visible") {
@@ -316,7 +333,7 @@ export function App() {
       ambientSoundRef.current.context.resume().catch(() => {
         retryAmbient();
       });
-    }, 3500);
+    }, 1500);
 
     retryAmbient();
     window.addEventListener("load", retryAmbient);
@@ -332,6 +349,8 @@ export function App() {
 
     return () => {
       window.clearInterval(interval);
+      ambientRetryTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+      ambientRetryTimersRef.current = [];
       window.removeEventListener("load", retryAmbient);
       window.removeEventListener("pointerdown", retryAmbient);
       window.removeEventListener("click", retryAmbient);
@@ -344,6 +363,14 @@ export function App() {
       document.removeEventListener("visibilitychange", retryWhenVisible);
     };
   }, []);
+
+  useEffect(() => {
+    if (!ambientPreferenceRef.current || sceneState.status !== "ready") {
+      return;
+    }
+    kickAmbientWatchdog(18000);
+    ensureAmbientSound().catch(() => {});
+  }, [sceneState.status, observedAt, viewMode]);
 
   useEffect(() => {
     window.localStorage.setItem(SKETCH_STORAGE_KEY, JSON.stringify(savedSketches));
@@ -874,6 +901,8 @@ export function App() {
   }
 
   function stopAmbientSound({ remember = true } = {}) {
+    ambientRetryTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    ambientRetryTimersRef.current = [];
     if (ambientWatchdogRef.current.frame) {
       window.cancelAnimationFrame(ambientWatchdogRef.current.frame);
       ambientWatchdogRef.current.frame = 0;
@@ -942,7 +971,7 @@ export function App() {
     if (ambientSoundRef.current?.context?.state === "running") {
       ambientSoundRef.current.setVolume(ambientVolumeRef.current);
       setAmbientEnabled(true);
-      kickAmbientWatchdog(4000);
+      kickAmbientWatchdog(8000);
       return true;
     }
 
@@ -956,6 +985,7 @@ export function App() {
 
   async function startAmbientSound({ remember = true } = {}) {
     ambientPreferenceRef.current = true;
+    setAmbientEnabled(true);
 
     if (ambientSoundRef.current) {
       try {
@@ -989,7 +1019,7 @@ export function App() {
         setAmbientEnabled(false);
       }
       if (ambientPreferenceRef.current && soundscape.context.state !== "closed") {
-        kickAmbientWatchdog(12000);
+        kickAmbientWatchdog(18000);
         window.setTimeout(() => {
           ensureAmbientSound().catch(() => {});
         }, 180);
@@ -1003,7 +1033,7 @@ export function App() {
       soundscape.setVolume(ambientVolumeRef.current);
       setAmbientEnabled(true);
       window.localStorage.setItem(AMBIENT_STORAGE_KEY, "on");
-      kickAmbientWatchdog(6000);
+      kickAmbientWatchdog(18000);
       return true;
     } catch (error) {
       console.warn("Ambient audio is waiting for a user gesture:", error);
@@ -1021,6 +1051,15 @@ export function App() {
     }
 
     await startAmbientSound();
+  }
+
+  function handleViewerWakeAmbient() {
+    if (!ambientPreferenceRef.current) {
+      ambientPreferenceRef.current = true;
+      window.localStorage.setItem(AMBIENT_STORAGE_KEY, "on");
+    }
+    kickAmbientWatchdog(18000);
+    ensureAmbientSound().catch(() => {});
   }
 
   function shiftTime(hours) {
@@ -1486,7 +1525,14 @@ export function App() {
           </section>
         </aside>
 
-        <main ref={viewerRef} className={`viewer ${isFullscreen ? "is-fullscreen" : ""}`}>
+        <main
+          ref={viewerRef}
+          className={`viewer ${isFullscreen ? "is-fullscreen" : ""}`}
+          onClickCapture={handleViewerWakeAmbient}
+          onWheelCapture={handleViewerWakeAmbient}
+          onPointerDownCapture={handleViewerWakeAmbient}
+          onTouchStartCapture={handleViewerWakeAmbient}
+        >
           <PlanetariumCanvas
             scene={sceneState.data}
             selectedTarget={selectedTarget}
@@ -1726,7 +1772,14 @@ export function App() {
                 <p className="eyebrow">{dictionary.viewer.constellationsInFrame}</p>
                 <div className="constellation-list">
                   {currentViewConstellations.map((name) => (
-                    <span key={name}>{dictionary.constellations?.[name]?.[language] || name}</span>
+                    <button
+                      key={name}
+                      type="button"
+                      className={`constellation-pill ${focusedConstellation === name ? "is-active" : ""}`}
+                      onClick={() => setFocusedConstellation(name)}
+                    >
+                      {dictionary.constellations?.[name]?.[language] || name}
+                    </button>
                   ))}
                 </div>
               </section>

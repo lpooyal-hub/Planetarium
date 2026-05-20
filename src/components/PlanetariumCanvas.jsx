@@ -352,12 +352,12 @@ function SceneContents({
     const trackWeight = trackedCenter ? 1 : 0;
     const targetTiltX = trackedCenter || projectionMode || observerMode ? 0 : spaceMode ? Math.sin(driftB) * 0.018 : -pointer.y * 0.01;
     const targetYawDrift = trackedCenter || projectionMode || observerMode ? 0 : spaceMode ? Math.sin(driftA) * 0.022 : pointer.x * 0.018;
-    const baseCameraX = projectionMode ? 0 : spaceMode ? Math.sin(driftA) * 0.55 : observerMode ? pointer.x * 0.06 : pointer.x * 0.26;
-    const baseCameraY = projectionMode ? 0 : spaceMode ? Math.cos(driftB) * 0.32 : observerMode ? pointer.y * 0.03 : -0.15 + pointer.y * 0.08;
+    const baseCameraX = projectionMode ? 0 : spaceMode ? Math.sin(driftA) * 0.55 : observerMode ? pointer.x * 0.04 : pointer.x * 0.26;
+    const baseCameraY = projectionMode ? 0 : spaceMode ? Math.cos(driftB) * 0.32 : observerMode ? pointer.y * 0.02 : -0.15 + pointer.y * 0.08;
     const targetCameraZ = projectionMode ? -0.65 : spaceMode ? -11.8 + Math.sin(driftA * 0.7) * 0.18 : observerMode ? 0.3 : -0.42;
-    const baseLookX = projectionMode ? 0 : spaceMode ? Math.sin(driftA * 0.8) * 2.2 : observerMode ? pointer.x * 0.28 : pointer.x * 1.45;
-    const baseLookY = projectionMode ? 0 : spaceMode ? Math.cos(driftB * 1.15) * 0.85 : observerMode ? 9.4 + pointer.y * 0.18 : 2.35 + pointer.y * 0.46;
-    const baseLookZ = projectionMode ? -13.5 : spaceMode ? 0 : observerMode ? 0 : -14.6;
+    const baseLookX = projectionMode ? 0 : spaceMode ? Math.sin(driftA * 0.8) * 2.2 : observerMode ? pointer.x * 0.2 : pointer.x * 1.45;
+    const baseLookY = projectionMode ? 0 : spaceMode ? Math.cos(driftB * 1.15) * 0.85 : observerMode ? 10.2 + pointer.y * 0.12 : 2.35 + pointer.y * 0.46;
+    const baseLookZ = projectionMode ? -13.5 : spaceMode ? 0 : observerMode ? -0.9 : -14.6;
     const targetCameraX = THREE.MathUtils.lerp(baseCameraX, trackedCenter ? trackedCenter.x * 0.08 : baseCameraX, trackWeight);
     const targetCameraY = THREE.MathUtils.lerp(baseCameraY, trackedCenter ? baseCameraY + trackedCenter.y * (observerMode ? 0.02 : 0.035) : baseCameraY, trackWeight);
     const targetLookX = THREE.MathUtils.lerp(baseLookX, trackedCenter ? trackedCenter.x : baseLookX, trackWeight);
@@ -383,10 +383,10 @@ function SceneContents({
     lookAnchor.current.z = THREE.MathUtils.damp(lookAnchor.current.z, targetLookZ, spaceMode ? 2.4 : observerMode ? 7.8 : 5.7, delta);
 
     if (observerMode) {
-      const observerLift = trackedCenter ? THREE.MathUtils.lerp(10.6, 6.8, zoomLevel) : THREE.MathUtils.lerp(11.6, 7.6, zoomLevel);
+      const observerLift = trackedCenter ? THREE.MathUtils.lerp(11.2, 7.2, zoomLevel) : THREE.MathUtils.lerp(12.6, 8.6, zoomLevel);
       camera.position.x = cameraAnchor.current.x;
       camera.position.y = -observerLift + cameraAnchor.current.y;
-      camera.position.z = 0.85 + cameraAnchor.current.z * 0.16;
+      camera.position.z = 1.35 + cameraAnchor.current.z * 0.12;
     } else {
       camera.position.x = cameraAnchor.current.x;
       camera.position.y = cameraAnchor.current.y;
@@ -999,10 +999,11 @@ function projectSkyPosition(star, viewMode) {
     z = -13.8 - edgeFalloff * 4.8 - (1 - altitudeLift) * 1.2;
   } else {
     const altitude = altitudeRatio * Math.PI * 0.5;
-    const domeRadius = 12.4 + Math.max(0, 4.8 - star.magnitude) * 0.08;
-    x = Math.sin(azWrapped) * Math.cos(altitude) * domeRadius;
-    y = Math.sin(altitude) * domeRadius;
-    z = -Math.cos(azWrapped) * Math.cos(altitude) * domeRadius;
+    const domeRadius = 13.6 + Math.max(0, 4.8 - star.magnitude) * 0.1;
+    const horizonSpread = THREE.MathUtils.lerp(1.18, 0.62, altitudeRatio);
+    x = Math.sin(azWrapped) * Math.cos(altitude) * domeRadius * horizonSpread;
+    y = Math.sin(altitude) * domeRadius * 1.08;
+    z = -Math.cos(azWrapped) * Math.cos(altitude) * domeRadius * THREE.MathUtils.lerp(1.22, 0.54, altitudeRatio) - altitudeRatio * 0.75;
   }
 
   return {

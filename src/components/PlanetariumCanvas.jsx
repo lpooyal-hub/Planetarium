@@ -50,6 +50,7 @@ export function PlanetariumCanvas({
   starGlowStrength = 0.8,
   viewMode,
   focusedConstellation,
+  trackConstellation = false,
   drawMode,
   customSketchStarIds,
   creativeMode = false,
@@ -94,6 +95,7 @@ export function PlanetariumCanvas({
           starGlowStrength={starGlowStrength}
           viewMode={viewMode}
           focusedConstellation={focusedConstellation}
+          trackConstellation={trackConstellation}
           drawMode={drawMode}
           customSketchStarIds={customSketchStarIds}
         />
@@ -252,6 +254,7 @@ function SceneContents({
   starGlowStrength,
   viewMode,
   focusedConstellation,
+  trackConstellation,
   drawMode,
   customSketchStarIds
 }) {
@@ -284,6 +287,12 @@ function SceneContents({
   );
 
   const constellationCenters = useMemo(() => buildConstellationCenters(projectedStars), [projectedStars]);
+  const trackedCenter = useMemo(() => {
+    if (!trackConstellation || focusedConstellation === "all") {
+      return null;
+    }
+    return constellationCenters.get(focusedConstellation) || null;
+  }, [constellationCenters, focusedConstellation, trackConstellation]);
   const labelData = useMemo(() => {
     const starLabels = [];
     const constellationLabels = [];
@@ -328,14 +337,20 @@ function SceneContents({
     const observerMode = viewMode === "observer";
     const driftA = clock.elapsedTime * 0.085;
     const driftB = clock.elapsedTime * 0.052;
+    const trackWeight = trackedCenter ? 1 : 0;
     const targetTiltX = spaceMode ? Math.sin(driftB) * 0.018 : observerMode ? -0.12 - pointer.y * 0.028 : -pointer.y * 0.01;
     const targetYawDrift = spaceMode ? Math.sin(driftA) * 0.022 : observerMode ? pointer.x * 0.03 : pointer.x * 0.018;
-    const targetCameraX = spaceMode ? Math.sin(driftA) * 0.55 : observerMode ? pointer.x * 0.18 : pointer.x * 0.26;
-    const targetCameraY = spaceMode ? Math.cos(driftB) * 0.32 : observerMode ? -1.1 + pointer.y * 0.18 : -0.15 + pointer.y * 0.08;
+    const baseCameraX = spaceMode ? Math.sin(driftA) * 0.55 : observerMode ? pointer.x * 0.18 : pointer.x * 0.26;
+    const baseCameraY = spaceMode ? Math.cos(driftB) * 0.32 : observerMode ? -1.1 + pointer.y * 0.18 : -0.15 + pointer.y * 0.08;
     const targetCameraZ = spaceMode ? -11.8 + Math.sin(driftA * 0.7) * 0.18 : observerMode ? -0.65 : -0.42;
-    const targetLookX = spaceMode ? Math.sin(driftA * 0.8) * 2.2 : observerMode ? pointer.x * 0.9 : pointer.x * 1.45;
-    const targetLookY = spaceMode ? Math.cos(driftB * 1.15) * 0.85 : observerMode ? 1.8 + pointer.y * 0.75 : 2.35 + pointer.y * 0.46;
-    const targetLookZ = spaceMode ? 0 : observerMode ? -13.4 : -14.6;
+    const baseLookX = spaceMode ? Math.sin(driftA * 0.8) * 2.2 : observerMode ? pointer.x * 0.9 : pointer.x * 1.45;
+    const baseLookY = spaceMode ? Math.cos(driftB * 1.15) * 0.85 : observerMode ? 1.8 + pointer.y * 0.75 : 2.35 + pointer.y * 0.46;
+    const baseLookZ = spaceMode ? 0 : observerMode ? -13.4 : -14.6;
+    const targetCameraX = THREE.MathUtils.lerp(baseCameraX, trackedCenter ? trackedCenter.x * 0.12 : baseCameraX, trackWeight);
+    const targetCameraY = THREE.MathUtils.lerp(baseCameraY, trackedCenter ? baseCameraY + trackedCenter.y * 0.05 : baseCameraY, trackWeight);
+    const targetLookX = THREE.MathUtils.lerp(baseLookX, trackedCenter ? trackedCenter.x : baseLookX, trackWeight);
+    const targetLookY = THREE.MathUtils.lerp(baseLookY, trackedCenter ? trackedCenter.y + (spaceMode ? 0.4 : 0.7) : baseLookY, trackWeight);
+    const targetLookZ = THREE.MathUtils.lerp(baseLookZ, trackedCenter ? trackedCenter.z : baseLookZ, trackWeight);
 
     if (groupRef.current) {
       if (autoRotate) {

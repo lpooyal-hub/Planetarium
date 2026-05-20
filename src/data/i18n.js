@@ -223,6 +223,9 @@ export const translations = {
         autoRotate: "Auto rotate"
       },
       focusConstellation: "Focus constellation",
+      searchConstellation: "Search constellation",
+      searchPlaceholder: "Type a constellation name",
+      trackConstellation: "Track selected constellation",
       sketchLab: "Space canvas",
       startSketching: "Start sketching",
       finishSketching: "Finish sketching",
@@ -494,6 +497,9 @@ export const translations = {
         autoRotate: "자동 회전"
       },
       focusConstellation: "강조할 별자리",
+      searchConstellation: "별자리 검색",
+      searchPlaceholder: "별자리 이름 검색",
+      trackConstellation: "선택한 별자리 추적",
       sketchLab: "우주 캔버스",
       startSketching: "스케치 시작",
       finishSketching: "스케치 종료",

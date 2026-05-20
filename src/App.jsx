@@ -233,6 +233,8 @@ export function App() {
   const [starGlowStrength, setStarGlowStrength] = useState(0.8);
   const [viewMode, setViewMode] = useState("space");
   const [focusedConstellation, setFocusedConstellation] = useState("all");
+  const [constellationSearch, setConstellationSearch] = useState("");
+  const [trackConstellation, setTrackConstellation] = useState(false);
   const [creativeTool, setCreativeTool] = useState("star");
   const [planetPreset, setPlanetPreset] = useState(planetPresets[0].id);
   const [presetConstellationName, setPresetConstellationName] = useState("");
@@ -384,6 +386,17 @@ export function App() {
     [sceneState.data, selectedTarget]
   );
   const visibleConstellations = sceneState.data?.summary.visibleConstellations || [];
+  const filteredConstellations = useMemo(() => {
+    const query = constellationSearch.trim().toLowerCase();
+    if (!query) {
+      return visibleConstellations;
+    }
+
+    return visibleConstellations.filter((name) => {
+      const translated = dictionary.constellations?.[name]?.[language] || name;
+      return name.toLowerCase().includes(query) || translated.toLowerCase().includes(query);
+    });
+  }, [constellationSearch, dictionary.constellations, language, visibleConstellations]);
   const activeCustomConstellation = useMemo(
     () => customSpace.constellations.find((constellation) => constellation.id === customSpace.activeConstellationId) || customSpace.constellations[0],
     [customSpace]
@@ -447,6 +460,12 @@ export function App() {
       setPresetConstellationName(visibleConstellations[0]);
     }
   }, [presetConstellationName, visibleConstellations]);
+
+  useEffect(() => {
+    if (focusedConstellation === "all") {
+      setTrackConstellation(false);
+    }
+  }, [focusedConstellation]);
 
   function updateObserver(key, value) {
     setObserver((current) => ({
@@ -1020,15 +1039,33 @@ export function App() {
               <section>
                 <p className="eyebrow">{dictionary.viewer.constellationFocus}</p>
                 <label className="stacked-field">
+                  <span>{dictionary.viewer.searchConstellation}</span>
+                  <input
+                    type="text"
+                    value={constellationSearch}
+                    placeholder={dictionary.viewer.searchPlaceholder}
+                    onChange={(event) => setConstellationSearch(event.target.value)}
+                  />
+                </label>
+                <label className="stacked-field">
                   <span>{dictionary.viewer.focusConstellation}</span>
                   <select value={focusedConstellation} onChange={(event) => setFocusedConstellation(event.target.value)}>
                     <option value="all">{dictionary.viewer.allSky}</option>
-                    {visibleConstellations.map((name) => (
+                    {filteredConstellations.map((name) => (
                       <option key={name} value={name}>
                         {dictionary.constellations?.[name]?.[language] || name}
                       </option>
                     ))}
                   </select>
+                </label>
+                <label className="toggle-item">
+                  <input
+                    type="checkbox"
+                    checked={trackConstellation}
+                    disabled={focusedConstellation === "all"}
+                    onChange={(event) => setTrackConstellation(event.target.checked)}
+                  />
+                  <span>{dictionary.viewer.trackConstellation}</span>
                 </label>
                 <div className="constellation-list focus-list">
                   <button
@@ -1038,7 +1075,7 @@ export function App() {
                   >
                     {dictionary.viewer.allSky}
                   </button>
-                  {visibleConstellations.slice(0, 10).map((name) => (
+                  {filteredConstellations.slice(0, 10).map((name) => (
                     <button
                       key={name}
                       type="button"
@@ -1347,6 +1384,7 @@ export function App() {
             starGlowStrength={starGlowStrength}
             viewMode={viewMode}
             focusedConstellation={currentPage === "watch" ? focusedConstellation : "all"}
+            trackConstellation={currentPage === "watch" ? trackConstellation : false}
             drawMode={currentPage === "sketch"}
             customSketchStarIds={[]}
             creativeMode={currentPage === "sketch"}
@@ -1357,15 +1395,33 @@ export function App() {
           {currentPage === "watch" ? (
             <div className="viewer-focus-overlay">
               <label className="overlay-focus-field">
+                <span>{dictionary.viewer.searchConstellation}</span>
+                <input
+                  type="text"
+                  value={constellationSearch}
+                  placeholder={dictionary.viewer.searchPlaceholder}
+                  onChange={(event) => setConstellationSearch(event.target.value)}
+                />
+              </label>
+              <label className="overlay-focus-field">
                 <span>{dictionary.viewer.focusConstellation}</span>
                 <select value={focusedConstellation} onChange={(event) => setFocusedConstellation(event.target.value)}>
                   <option value="all">{dictionary.viewer.allSky}</option>
-                  {visibleConstellations.map((name) => (
+                  {filteredConstellations.map((name) => (
                     <option key={name} value={name}>
                       {dictionary.constellations?.[name]?.[language] || name}
                     </option>
                   ))}
                 </select>
+              </label>
+              <label className="overlay-track-toggle">
+                <input
+                  type="checkbox"
+                  checked={trackConstellation}
+                  disabled={focusedConstellation === "all"}
+                  onChange={(event) => setTrackConstellation(event.target.checked)}
+                />
+                <span>{dictionary.viewer.trackConstellation}</span>
               </label>
             </div>
           ) : null}

@@ -189,6 +189,12 @@ function setTonightTimestamp(value) {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
 
+function setObserverHourTimestamp(value, hours, minutes = 0) {
+  const date = new Date(value);
+  date.setHours(hours, minutes, 0, 0);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
 function createBlankSpaceScene(name = "") {
   const constellationId = `constellation-${Date.now()}`;
   return {
@@ -499,6 +505,18 @@ export function App() {
   const activeConstellationStory =
     (activeConstellationKey && dictionary.viewer.constellationMoods?.[activeConstellationKey]?.[language]) || dictionary.viewer.constellationFallback;
   const sketchViewDescription = dictionary.viewer.viewModeDescriptions[viewMode];
+  const observerMomentLabel = useMemo(() => {
+    const date = new Date(observedAt);
+    if (Number.isNaN(date.getTime())) {
+      return observedAt;
+    }
+    return new Intl.DateTimeFormat(language === "ko" ? "ko-KR" : "en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    }).format(date);
+  }, [language, observedAt]);
   const currentViewConstellations = useMemo(() => {
     const stars = sceneState.data?.stars || [];
     if (!stars.length) {
@@ -1126,6 +1144,26 @@ export function App() {
                     {dictionary.viewer.timeJump.forward}
                   </button>
                 </div>
+                {viewMode === "observer" ? (
+                  <>
+                    <div className="observer-moment-card">
+                      <strong>{language === "ko" ? "현재 관측 시각" : "Observer time"}</strong>
+                      <span>{observerMomentLabel}</span>
+                      <small>{language === "ko" ? "시간을 바꾸면 지평선 위 별자리 위치가 함께 이동합니다." : "Changing the time shifts where constellations sit above the horizon."}</small>
+                    </div>
+                    <div className="constellation-list focus-list">
+                      <button type="button" className="focus-chip" onClick={() => setObservedAt((current) => setObserverHourTimestamp(current, 21))}>
+                        {language === "ko" ? "초저녁 21:00" : "9 PM"}
+                      </button>
+                      <button type="button" className="focus-chip" onClick={() => setObservedAt((current) => setObserverHourTimestamp(current, 0))}>
+                        {language === "ko" ? "한밤중 00:00" : "12 AM"}
+                      </button>
+                      <button type="button" className="focus-chip" onClick={() => setObservedAt((current) => setObserverHourTimestamp(current, 3))}>
+                        {language === "ko" ? "새벽 03:00" : "3 AM"}
+                      </button>
+                    </div>
+                  </>
+                ) : null}
                 <div className="field-grid">
                   <label>
                     <span>{dictionary.viewer.latitude}</span>

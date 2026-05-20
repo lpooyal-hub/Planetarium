@@ -600,6 +600,32 @@ input[type="range"] {
   line-height: 1.7;
 }
 
+.observer-moment-card {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(159, 216, 255, 0.18);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(9, 16, 28, 0.92), rgba(6, 10, 18, 0.86));
+}
+
+.observer-moment-card strong {
+  color: #e8f2ff;
+  font-size: 0.9rem;
+}
+
+.observer-moment-card span {
+  color: #fff1ca;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.observer-moment-card small {
+  color: #9db0c9;
+  line-height: 1.5;
+}
+
 .constellation-list {
   display: flex;
   flex-wrap: wrap;

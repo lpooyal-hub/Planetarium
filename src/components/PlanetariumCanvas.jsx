@@ -1064,6 +1064,8 @@ function ObserverGuide({ dictionary, language }) {
       <GuideGrid />
       <TextSprite text={language === "ko" ? "천정" : "Zenith"} position={[0, 12.8, 0]} color="#fff2b3" scale={1.9} />
       <TextSprite text={language === "ko" ? "북쪽 하늘" : "North sky"} position={[0, 2.1, -10.9]} color="#9fd8ff" scale={1.5} />
+      <TextSprite text="60°" position={[0, 9.3, -1.4]} color="#b9cde6" scale={1.15} />
+      <TextSprite text="30°" position={[0, 5.6, -5.3]} color="#8fa6c5" scale={1.1} />
     </>
   );
 }

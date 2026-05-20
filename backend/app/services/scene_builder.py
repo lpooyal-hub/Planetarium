@@ -17,6 +17,8 @@ iers.conf.auto_download = False
 DEFAULT_LIMITING_MAGNITUDE = 4.8
 DEFAULT_MAX_STARS = 4500
 SCENE_RADIUS = 10.0
+CONSTELLATION_MIN_ALTITUDE = 8.0
+CONSTELLATION_MIN_STARS = 2
 HYG_CATALOG_PATH = Path("/app/data/hygdata_v42.csv.gz")
 CONSTELLATION_NAMES = {
     "And": "Andromeda",
@@ -130,7 +132,6 @@ def build_star_scene(
     ).transform_to(frame)
 
     stars = []
-    visible_ids = set()
 
     for star, transformed in zip(filtered, coords):
         altitude = float(transformed.alt.degree)
@@ -156,10 +157,20 @@ def build_star_scene(
             "catalog": "HYG v4.2",
         }
         stars.append(star_payload)
-        visible_ids.add(star["id"])
 
-    lines = _build_constellation_lines(stars, visible_ids)
-    visible_constellations = sorted({star["constellation"] for star in stars if star["constellation"] != "Unknown"})
+    stars_by_id = {star["id"]: star for star in stars}
+    candidate_star_ids = {
+        star["id"]
+        for star in stars
+        if star["constellation"] != "Unknown" and star["altitude"] >= CONSTELLATION_MIN_ALTITUDE
+    }
+    candidate_lines = _build_constellation_lines(stars, candidate_star_ids)
+    visible_constellations = _build_visible_constellations(stars, candidate_lines)
+    lines = [
+        line
+        for line in candidate_lines
+        if _line_constellation(line, stars_by_id) in visible_constellations
+    ]
 
     return {
         "observer": {
@@ -238,6 +249,46 @@ def _build_constellation_lines(stars: list[dict], visible_ids: set[str]):
         lines.append({"from": from_star["id"], "to": to_star["id"]})
 
     return lines
+
+
+def _build_visible_constellations(stars: list[dict], lines: list[dict]) -> list[str]:
+    star_counts: dict[str, int] = {}
+    line_counts: dict[str, int] = {}
+    stars_by_id = {star["id"]: star for star in stars}
+
+    for star in stars:
+        constellation = star["constellation"]
+        if constellation == "Unknown" or star["altitude"] < CONSTELLATION_MIN_ALTITUDE:
+            continue
+        star_counts[constellation] = star_counts.get(constellation, 0) + 1
+
+    for line in lines:
+        constellation = _line_constellation(line, stars_by_id)
+        if constellation == "Unknown":
+            continue
+        line_counts[constellation] = line_counts.get(constellation, 0) + 1
+
+    visible = []
+    for constellation, count in star_counts.items():
+        if count < CONSTELLATION_MIN_STARS:
+            continue
+        if line_counts.get(constellation, 0) < 1:
+            continue
+        visible.append(constellation)
+
+    return sorted(visible)
+
+
+def _line_constellation(line: dict, stars_by_id: dict[str, dict]) -> str:
+    from_star = stars_by_id.get(line["from"])
+    to_star = stars_by_id.get(line["to"])
+
+    if not from_star or not to_star:
+        return "Unknown"
+    if from_star["constellation"] != to_star["constellation"]:
+        return "Unknown"
+
+    return from_star["constellation"]
 
 
 def _build_name(row: dict, constellation: str):

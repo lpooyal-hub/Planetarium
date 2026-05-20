@@ -202,15 +202,21 @@ function createBlankSpaceScene(name = "") {
         id: constellationId,
         name: "My Constellation",
         color: "#ffcf70",
-        starIds: []
+        starIds: [],
+        segments: []
       }
     ]
   };
 }
 
+function clampCoordinate(value, min = -18, max = 18) {
+  return Number(Math.min(max, Math.max(min, value)).toFixed(3));
+}
+
 export function App() {
   const viewerRef = useRef(null);
   const ambientSoundRef = useRef(null);
+  const ambientPreferenceRef = useRef(window.localStorage.getItem(AMBIENT_STORAGE_KEY) !== "off");
   const [currentPage, setCurrentPage] = useState("watch");
   const [language, setLanguage] = useState(getInitialLanguage);
   const [observer, setObserver] = useState(defaultObserver);
@@ -223,10 +229,13 @@ export function App() {
   const [showGuides, setShowGuides] = useState(false);
   const [showConstellations, setShowConstellations] = useState(true);
   const [autoRotate, setAutoRotate] = useState(true);
+  const [atmosphereStrength, setAtmosphereStrength] = useState(0.7);
+  const [starGlowStrength, setStarGlowStrength] = useState(0.8);
   const [viewMode, setViewMode] = useState("space");
   const [focusedConstellation, setFocusedConstellation] = useState("all");
   const [creativeTool, setCreativeTool] = useState("star");
   const [planetPreset, setPlanetPreset] = useState(planetPresets[0].id);
+  const [presetConstellationName, setPresetConstellationName] = useState("");
   const [sketchName, setSketchName] = useState("");
   const [savedSketches, setSavedSketches] = useState([]);
   const [activeSketchId, setActiveSketchId] = useState("draft");
@@ -268,37 +277,48 @@ export function App() {
   );
 
   useEffect(() => {
-    if (window.localStorage.getItem(AMBIENT_STORAGE_KEY) === "off") {
+    if (!ambientPreferenceRef.current) {
       return undefined;
     }
 
-    let active = true;
-    const startOnGesture = () => {
-      startAmbientSound({ remember: false }).then((started) => {
-        if (started) {
-          removeGestureListeners();
-        }
-      });
-    };
-    const removeGestureListeners = () => {
-      window.removeEventListener("pointerdown", startOnGesture);
-      window.removeEventListener("keydown", startOnGesture);
-      window.removeEventListener("touchstart", startOnGesture);
-    };
-
-    startAmbientSound({ remember: false }).then((started) => {
-      if (!active || started) {
+    const retryAmbient = () => {
+      if (!ambientPreferenceRef.current) {
         return;
       }
+      startAmbientSound({ remember: false }).catch(() => {});
+    };
+    const retryWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        retryAmbient();
+      }
+    };
+    const interval = window.setInterval(() => {
+      if (!ambientPreferenceRef.current) {
+        return;
+      }
+      if (!ambientSoundRef.current || ambientSoundRef.current.context.state !== "running") {
+        retryAmbient();
+        return;
+      }
+      ambientSoundRef.current.context.resume().catch(() => {});
+    }, 3500);
 
-      window.addEventListener("pointerdown", startOnGesture, { passive: true });
-      window.addEventListener("keydown", startOnGesture);
-      window.addEventListener("touchstart", startOnGesture, { passive: true });
-    });
+    retryAmbient();
+    window.addEventListener("pointerdown", retryAmbient, { passive: true });
+    window.addEventListener("keydown", retryAmbient);
+    window.addEventListener("touchstart", retryAmbient, { passive: true });
+    window.addEventListener("focus", retryAmbient);
+    window.addEventListener("pageshow", retryAmbient);
+    document.addEventListener("visibilitychange", retryWhenVisible);
 
     return () => {
-      active = false;
-      removeGestureListeners();
+      window.clearInterval(interval);
+      window.removeEventListener("pointerdown", retryAmbient);
+      window.removeEventListener("keydown", retryAmbient);
+      window.removeEventListener("touchstart", retryAmbient);
+      window.removeEventListener("focus", retryAmbient);
+      window.removeEventListener("pageshow", retryAmbient);
+      document.removeEventListener("visibilitychange", retryWhenVisible);
     };
   }, []);
 
@@ -368,6 +388,33 @@ export function App() {
     () => customSpace.constellations.find((constellation) => constellation.id === customSpace.activeConstellationId) || customSpace.constellations[0],
     [customSpace]
   );
+  const activeCustomConstellationStars = useMemo(() => {
+    if (!activeCustomConstellation) {
+      return [];
+    }
+    const starIds = new Set(activeCustomConstellation.starIds);
+    return customSpace.stars.filter((star) => starIds.has(star.id));
+  }, [activeCustomConstellation, customSpace.stars]);
+  const activeConstellationCenter = useMemo(() => {
+    if (!activeCustomConstellationStars.length) {
+      return null;
+    }
+
+    const total = activeCustomConstellationStars.reduce(
+      (current, star) => ({
+        x: current.x + star.x,
+        y: current.y + star.y,
+        z: current.z + star.z
+      }),
+      { x: 0, y: 0, z: 0 }
+    );
+
+    return {
+      x: total.x / activeCustomConstellationStars.length,
+      y: total.y / activeCustomConstellationStars.length,
+      z: total.z / activeCustomConstellationStars.length
+    };
+  }, [activeCustomConstellationStars]);
   const selectedCustomStar = useMemo(
     () => (selectedTarget?.kind === "custom-star" ? customSpace.stars.find((star) => star.id === selectedTarget.id) || null : null),
     [customSpace.stars, selectedTarget]
@@ -389,6 +436,17 @@ export function App() {
   const activeConstellationName = activeConstellationKey ? dictionary.constellations?.[activeConstellationKey]?.[language] || activeConstellationKey : null;
   const activeConstellationStory =
     (activeConstellationKey && dictionary.viewer.constellationMoods?.[activeConstellationKey]?.[language]) || dictionary.viewer.constellationFallback;
+  const sketchViewDescription = dictionary.viewer.viewModeDescriptions[viewMode];
+
+  useEffect(() => {
+    if (!visibleConstellations.length) {
+      setPresetConstellationName("");
+      return;
+    }
+    if (!presetConstellationName || !visibleConstellations.includes(presetConstellationName)) {
+      setPresetConstellationName(visibleConstellations[0]);
+    }
+  }, [presetConstellationName, visibleConstellations]);
 
   function updateObserver(key, value) {
     setObserver((current) => ({
@@ -496,10 +554,129 @@ export function App() {
           id: nextId,
           name: `${dictionary.viewer.customConstellation} ${current.constellations.length + 1}`,
           color: ["#ffcf70", "#7fdbc9", "#a7c7ff", "#f095b8"][current.constellations.length % 4],
-          starIds: []
+          starIds: [],
+          segments: []
         }
       ]
     }));
+  }
+
+  function transformActiveConstellation(transformer) {
+    const constellationId = customSpace.activeConstellationId || customSpace.constellations[0]?.id;
+    if (!constellationId) {
+      return;
+    }
+
+    setCustomSpace((current) => ({
+      ...current,
+      stars: current.stars.map((star) => (star.constellationId === constellationId ? transformer(star) : star))
+    }));
+  }
+
+  function nudgeActiveConstellation(deltaX, deltaY) {
+    transformActiveConstellation((star) => ({
+      ...star,
+      x: clampCoordinate(star.x + deltaX),
+      y: clampCoordinate(star.y + deltaY)
+    }));
+  }
+
+  function scaleActiveConstellation(scaleDelta) {
+    if (!activeConstellationCenter) {
+      return;
+    }
+
+    transformActiveConstellation((star) => ({
+      ...star,
+      x: clampCoordinate(activeConstellationCenter.x + (star.x - activeConstellationCenter.x) * scaleDelta),
+      y: clampCoordinate(activeConstellationCenter.y + (star.y - activeConstellationCenter.y) * scaleDelta),
+      z: clampCoordinate(activeConstellationCenter.z + (star.z - activeConstellationCenter.z) * scaleDelta, -16, 4)
+    }));
+  }
+
+  function spreadActiveConstellation(spreadDelta) {
+    if (!activeConstellationCenter) {
+      return;
+    }
+
+    transformActiveConstellation((star) => ({
+      ...star,
+      x: clampCoordinate(activeConstellationCenter.x + (star.x - activeConstellationCenter.x) * spreadDelta),
+      y: clampCoordinate(activeConstellationCenter.y + (star.y - activeConstellationCenter.y) * spreadDelta)
+    }));
+  }
+
+  function rotateActiveConstellation(angleDegrees) {
+    if (!activeConstellationCenter) {
+      return;
+    }
+
+    const angle = (angleDegrees * Math.PI) / 180;
+    const cosine = Math.cos(angle);
+    const sine = Math.sin(angle);
+
+    transformActiveConstellation((star) => {
+      const offsetX = star.x - activeConstellationCenter.x;
+      const offsetY = star.y - activeConstellationCenter.y;
+      return {
+        ...star,
+        x: clampCoordinate(activeConstellationCenter.x + offsetX * cosine - offsetY * sine),
+        y: clampCoordinate(activeConstellationCenter.y + offsetX * sine + offsetY * cosine)
+      };
+    });
+  }
+
+  function importPresetConstellation() {
+    if (!presetConstellationName || !sceneState.data) {
+      return;
+    }
+
+    const sourceStars = sceneState.data.stars
+      .filter((star) => star.constellation === presetConstellationName && star.visible)
+      .sort((left, right) => left.magnitude - right.magnitude);
+
+    if (sourceStars.length < 2) {
+      return;
+    }
+
+    const constellationId = `constellation-${Date.now()}`;
+    const offsetX = customSpace.constellations.length * 1.2;
+    const idMap = new Map();
+    const importedStars = sourceStars.map((star, index) => {
+      const starId = `star-${Date.now()}-${index}`;
+      idMap.set(star.id, starId);
+      return {
+        id: starId,
+        name: star.name,
+        x: Number((star.x + offsetX).toFixed(3)),
+        y: Number(star.y.toFixed(3)),
+        z: Number(star.z.toFixed(3)),
+        size: Number(Math.max(0.95, Math.min(2.2, star.size * 3.4)).toFixed(2)),
+        color: star.color,
+        constellationId
+      };
+    });
+
+    const importedSegments = sceneState.data.lines
+      .filter((line) => idMap.has(line.from) && idMap.has(line.to))
+      .map((line) => [idMap.get(line.from), idMap.get(line.to)]);
+
+    setCustomSpace((current) => ({
+      ...current,
+      activeConstellationId: constellationId,
+      stars: [...current.stars, ...importedStars],
+      constellations: [
+        ...current.constellations,
+        {
+          id: constellationId,
+          name: dictionary.constellations?.[presetConstellationName]?.[language] || presetConstellationName,
+          color: "#ffcf70",
+          starIds: importedStars.map((star) => star.id),
+          segments: importedSegments
+        }
+      ]
+    }));
+    setSelectedTarget({ kind: "custom-star", id: importedStars[0].id });
   }
 
   function updateActiveConstellationName(name) {
@@ -568,7 +745,8 @@ export function App() {
           stars: current.stars.filter((star) => star.id !== target.id),
           constellations: current.constellations.map((constellation) => ({
             ...constellation,
-            starIds: constellation.starIds.filter((starId) => starId !== target.id)
+            starIds: constellation.starIds.filter((starId) => starId !== target.id),
+            segments: (constellation.segments || []).filter((segment) => !segment.includes(target.id))
           }))
         };
       }
@@ -630,11 +808,14 @@ export function App() {
 
     setAmbientEnabled(false);
     if (remember) {
+      ambientPreferenceRef.current = false;
       window.localStorage.setItem(AMBIENT_STORAGE_KEY, "off");
     }
   }
 
   async function startAmbientSound({ remember = true } = {}) {
+    ambientPreferenceRef.current = true;
+
     if (ambientSoundRef.current) {
       try {
         if (ambientSoundRef.current.context.state === "suspended") {
@@ -668,9 +849,7 @@ export function App() {
         throw new Error(`Audio context stayed ${soundscape.context.state}`);
       }
       setAmbientEnabled(true);
-      if (remember) {
-        window.localStorage.setItem(AMBIENT_STORAGE_KEY, "on");
-      }
+      window.localStorage.setItem(AMBIENT_STORAGE_KEY, "on");
       return true;
     } catch (error) {
       console.warn("Ambient audio is waiting for a user gesture:", error);
@@ -733,48 +912,80 @@ export function App() {
         <aside className="control-panel">
           <section>
             <p className="eyebrow">{currentPage === "watch" ? dictionary.viewer.controls : dictionary.viewer.sketchControls}</p>
-            <label className="stacked-field">
-              <span>{dictionary.viewer.observedAt}</span>
-              <input type="datetime-local" value={observedAt} onChange={(event) => setObservedAt(event.target.value)} />
-            </label>
-            <div className="time-jump-row">
-              <button type="button" className="focus-chip" onClick={() => shiftTime(-3)}>
-                {dictionary.viewer.timeJump.back}
-              </button>
-              <button type="button" className="focus-chip" onClick={() => setObservedAt((current) => setTonightTimestamp(current))}>
-                {dictionary.viewer.timeJump.tonight}
-              </button>
-              <button type="button" className="focus-chip" onClick={() => shiftTime(3)}>
-                {dictionary.viewer.timeJump.forward}
-              </button>
-            </div>
-            <div className="field-grid">
-              <label>
-                <span>{dictionary.viewer.latitude}</span>
-                <input
-                  type="number"
-                  min="-90"
-                  max="90"
-                  step="0.01"
-                  value={observer.latitude}
-                  onChange={(event) => updateObserver("latitude", event.target.value)}
-                />
-              </label>
-              <label>
-                <span>{dictionary.viewer.longitude}</span>
-                <input
-                  type="number"
-                  min="-180"
-                  max="180"
-                  step="0.01"
-                  value={observer.longitude}
-                  onChange={(event) => updateObserver("longitude", event.target.value)}
-                />
-              </label>
-            </div>
-            <button className="primary-button" type="button" onClick={requestLocation}>
-              {dictionary.viewer.useLocation}
-            </button>
+            {currentPage === "watch" ? (
+              <>
+                <label className="stacked-field">
+                  <span>{dictionary.viewer.observedAt}</span>
+                  <input type="datetime-local" value={observedAt} onChange={(event) => setObservedAt(event.target.value)} />
+                </label>
+                <div className="time-jump-row">
+                  <button type="button" className="focus-chip" onClick={() => shiftTime(-3)}>
+                    {dictionary.viewer.timeJump.back}
+                  </button>
+                  <button type="button" className="focus-chip" onClick={() => setObservedAt((current) => setTonightTimestamp(current))}>
+                    {dictionary.viewer.timeJump.tonight}
+                  </button>
+                  <button type="button" className="focus-chip" onClick={() => shiftTime(3)}>
+                    {dictionary.viewer.timeJump.forward}
+                  </button>
+                </div>
+                <div className="field-grid">
+                  <label>
+                    <span>{dictionary.viewer.latitude}</span>
+                    <input
+                      type="number"
+                      min="-90"
+                      max="90"
+                      step="0.01"
+                      value={observer.latitude}
+                      onChange={(event) => updateObserver("latitude", event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>{dictionary.viewer.longitude}</span>
+                    <input
+                      type="number"
+                      min="-180"
+                      max="180"
+                      step="0.01"
+                      value={observer.longitude}
+                      onChange={(event) => updateObserver("longitude", event.target.value)}
+                    />
+                  </label>
+                </div>
+                <button className="primary-button" type="button" onClick={requestLocation}>
+                  {dictionary.viewer.useLocation}
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="eyebrow">{dictionary.viewer.viewModeLabel}</p>
+                <div className="constellation-list focus-list">
+                  <button
+                    type="button"
+                    className={`focus-chip ${viewMode === "space" ? "is-active" : ""}`}
+                    onClick={() => setViewMode("space")}
+                  >
+                    {dictionary.viewer.viewModes.space}
+                  </button>
+                  <button
+                    type="button"
+                    className={`focus-chip ${viewMode === "observer" ? "is-active" : ""}`}
+                    onClick={() => setViewMode("observer")}
+                  >
+                    {dictionary.viewer.viewModes.observer}
+                  </button>
+                  <button
+                    type="button"
+                    className={`focus-chip ${viewMode === "panorama" ? "is-active" : ""}`}
+                    onClick={() => setViewMode("panorama")}
+                  >
+                    {dictionary.viewer.viewModes.panorama}
+                  </button>
+                </div>
+                <p className="helper-copy">{sketchViewDescription}</p>
+              </>
+            )}
           </section>
 
           {currentPage === "watch" ? (
@@ -876,6 +1087,105 @@ export function App() {
                 </select>
               </label>
               <label className="stacked-field">
+                <span>{dictionary.viewer.presetConstellation}</span>
+                <select value={presetConstellationName} onChange={(event) => setPresetConstellationName(event.target.value)} disabled={visibleConstellations.length === 0}>
+                  {visibleConstellations.length === 0 ? (
+                    <option value="">{dictionary.viewer.noPresetConstellations}</option>
+                  ) : (
+                    visibleConstellations.map((name) => (
+                      <option key={name} value={name}>
+                        {dictionary.constellations?.[name]?.[language] || name}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </label>
+              <button type="button" className="focus-chip" onClick={importPresetConstellation} disabled={!presetConstellationName}>
+                {dictionary.viewer.importConstellation}
+              </button>
+              <div className="toggle-grid">
+                <button
+                  type="button"
+                  className="focus-chip"
+                  onClick={() => nudgeActiveConstellation(-0.7, 0)}
+                  disabled={!activeCustomConstellationStars.length}
+                >
+                  {dictionary.viewer.arrange.left}
+                </button>
+                <button
+                  type="button"
+                  className="focus-chip"
+                  onClick={() => nudgeActiveConstellation(0.7, 0)}
+                  disabled={!activeCustomConstellationStars.length}
+                >
+                  {dictionary.viewer.arrange.right}
+                </button>
+                <button
+                  type="button"
+                  className="focus-chip"
+                  onClick={() => nudgeActiveConstellation(0, 0.7)}
+                  disabled={!activeCustomConstellationStars.length}
+                >
+                  {dictionary.viewer.arrange.up}
+                </button>
+                <button
+                  type="button"
+                  className="focus-chip"
+                  onClick={() => nudgeActiveConstellation(0, -0.7)}
+                  disabled={!activeCustomConstellationStars.length}
+                >
+                  {dictionary.viewer.arrange.down}
+                </button>
+                <button
+                  type="button"
+                  className="focus-chip"
+                  onClick={() => scaleActiveConstellation(1.14)}
+                  disabled={activeCustomConstellationStars.length < 2}
+                >
+                  {dictionary.viewer.arrange.bigger}
+                </button>
+                <button
+                  type="button"
+                  className="focus-chip"
+                  onClick={() => scaleActiveConstellation(0.88)}
+                  disabled={activeCustomConstellationStars.length < 2}
+                >
+                  {dictionary.viewer.arrange.smaller}
+                </button>
+                <button
+                  type="button"
+                  className="focus-chip"
+                  onClick={() => spreadActiveConstellation(1.12)}
+                  disabled={activeCustomConstellationStars.length < 2}
+                >
+                  {dictionary.viewer.arrange.spread}
+                </button>
+                <button
+                  type="button"
+                  className="focus-chip"
+                  onClick={() => spreadActiveConstellation(0.9)}
+                  disabled={activeCustomConstellationStars.length < 2}
+                >
+                  {dictionary.viewer.arrange.tighten}
+                </button>
+                <button
+                  type="button"
+                  className="focus-chip"
+                  onClick={() => rotateActiveConstellation(-12)}
+                  disabled={activeCustomConstellationStars.length < 2}
+                >
+                  {dictionary.viewer.arrange.rotateLeft}
+                </button>
+                <button
+                  type="button"
+                  className="focus-chip"
+                  onClick={() => rotateActiveConstellation(12)}
+                  disabled={activeCustomConstellationStars.length < 2}
+                >
+                  {dictionary.viewer.arrange.rotateRight}
+                </button>
+              </div>
+              <label className="stacked-field">
                 <span>{dictionary.viewer.constellationName}</span>
                 <input
                   type="text"
@@ -908,6 +1218,10 @@ export function App() {
                   <dd>{activeSketchName}</dd>
                 </div>
                 <div>
+                  <dt>{dictionary.viewer.activeConstellation}</dt>
+                  <dd>{activeCustomConstellation?.name || "--"}</dd>
+                </div>
+                <div>
                   <dt>{dictionary.viewer.customStars}</dt>
                   <dd>{customSpace.stars.length}</dd>
                 </div>
@@ -937,6 +1251,32 @@ export function App() {
               <>
                 <label className="stacked-field">
                   <span>
+                    {dictionary.viewer.atmosphereDensity}: {Math.round(atmosphereStrength * 100)}%
+                  </span>
+                  <input
+                    type="range"
+                    min="0.2"
+                    max="1"
+                    step="0.05"
+                    value={atmosphereStrength}
+                    onChange={(event) => setAtmosphereStrength(Number(event.target.value))}
+                  />
+                </label>
+                <label className="stacked-field">
+                  <span>
+                    {dictionary.viewer.starGlow}: {Math.round(starGlowStrength * 100)}%
+                  </span>
+                  <input
+                    type="range"
+                    min="0.2"
+                    max="1"
+                    step="0.05"
+                    value={starGlowStrength}
+                    onChange={(event) => setStarGlowStrength(Number(event.target.value))}
+                  />
+                </label>
+                <label className="stacked-field">
+                  <span>
                     {dictionary.viewer.limitingMagnitude}: {limitingMagnitude.toFixed(1)}
                   </span>
                   <input
@@ -962,34 +1302,32 @@ export function App() {
                   />
                 </label>
               </>
-            ) : null}
+            ) : (
+              <p className="helper-copy">{dictionary.viewer.creationPickHint}</p>
+            )}
             <div className="toggle-grid">
               {currentPage === "watch" ? (
-                <>
-                  <label className="toggle-item">
-                    <input
-                      type="checkbox"
-                      checked={showConstellations}
-                      onChange={(event) => setShowConstellations(event.target.checked)}
-                    />
-                    <span>{dictionary.viewer.toggles.constellations}</span>
-                  </label>
-                  <label className="toggle-item">
-                    <input type="checkbox" checked={showLabels} onChange={(event) => setShowLabels(event.target.checked)} />
-                    <span>{dictionary.viewer.toggles.labels}</span>
-                  </label>
-                </>
+                <label className="toggle-item">
+                  <input
+                    type="checkbox"
+                    checked={showConstellations}
+                    onChange={(event) => setShowConstellations(event.target.checked)}
+                  />
+                  <span>{dictionary.viewer.toggles.constellations}</span>
+                </label>
               ) : null}
+              <label className="toggle-item">
+                <input type="checkbox" checked={showLabels} onChange={(event) => setShowLabels(event.target.checked)} />
+                <span>{dictionary.viewer.toggles.labels}</span>
+              </label>
               <label className="toggle-item">
                 <input type="checkbox" checked={autoRotate} onChange={(event) => setAutoRotate(event.target.checked)} />
                 <span>{dictionary.viewer.toggles.autoRotate}</span>
               </label>
-              {currentPage === "watch" ? (
-                <label className="toggle-item">
-                  <input type="checkbox" checked={showGuides} onChange={(event) => setShowGuides(event.target.checked)} />
-                  <span>{dictionary.viewer.toggles.guides}</span>
-                </label>
-              ) : null}
+              <label className="toggle-item">
+                <input type="checkbox" checked={showGuides} onChange={(event) => setShowGuides(event.target.checked)} />
+                <span>{dictionary.viewer.toggles.guides}</span>
+              </label>
             </div>
           </section>
         </aside>
@@ -1005,8 +1343,10 @@ export function App() {
             showGuides={showGuides}
             showConstellations={showConstellations}
             autoRotate={autoRotate}
+            atmosphereStrength={atmosphereStrength}
+            starGlowStrength={starGlowStrength}
             viewMode={viewMode}
-            focusedConstellation={currentPage === "watch" && viewMode !== "space" ? focusedConstellation : "all"}
+            focusedConstellation={currentPage === "watch" ? focusedConstellation : "all"}
             drawMode={currentPage === "sketch"}
             customSketchStarIds={[]}
             creativeMode={currentPage === "sketch"}

@@ -19,6 +19,23 @@ function buildStarTexture(color) {
   return texture;
 }
 
+function buildPointTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  const context = canvas.getContext("2d");
+  const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gradient.addColorStop(0, "rgba(255,255,255,1)");
+  gradient.addColorStop(0.18, "rgba(255,255,255,0.96)");
+  gradient.addColorStop(0.5, "rgba(255,255,255,0.34)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
 export function PlanetariumCanvas({
   scene,
   selectedTarget,
@@ -29,6 +46,8 @@ export function PlanetariumCanvas({
   showGuides,
   showConstellations,
   autoRotate,
+  atmosphereStrength = 0.7,
+  starGlowStrength = 0.8,
   viewMode,
   focusedConstellation,
   drawMode,
@@ -52,6 +71,11 @@ export function PlanetariumCanvas({
           selectedTarget={selectedTarget}
           onSelectTarget={onSelectTarget}
           autoRotate={autoRotate}
+          showGuides={showGuides}
+          showLabels={showLabels}
+          viewMode={viewMode}
+          language={language}
+          dictionary={dictionary}
           creativeTool={creativeTool}
           onCreativeSpaceClick={onCreativeSpaceClick}
         />
@@ -66,6 +90,8 @@ export function PlanetariumCanvas({
           showGuides={showGuides}
           showConstellations={showConstellations}
           autoRotate={autoRotate}
+          atmosphereStrength={atmosphereStrength}
+          starGlowStrength={starGlowStrength}
           viewMode={viewMode}
           focusedConstellation={focusedConstellation}
           drawMode={drawMode}
@@ -76,40 +102,104 @@ export function PlanetariumCanvas({
   );
 }
 
-function CreativeSpaceContents({ customSpace, selectedTarget, onSelectTarget, autoRotate, creativeTool, onCreativeSpaceClick }) {
+function CreativeSpaceContents({
+  customSpace,
+  selectedTarget,
+  onSelectTarget,
+  autoRotate,
+  showGuides,
+  showLabels,
+  viewMode,
+  language,
+  dictionary,
+  creativeTool,
+  onCreativeSpaceClick
+}) {
   const groupRef = useRef(null);
   const cameraAnchor = useRef({ x: 0, y: 0, z: 0 });
   const lookAnchor = useRef({ x: 0, y: 0, z: -11.8 });
   const rotationAnchor = useRef({ x: 0, y: 0 });
   const { camera, pointer } = useThree();
+  const spaceMode = viewMode === "space";
+  const observerMode = viewMode === "observer";
+  const labelData = useMemo(() => {
+    if (!showLabels) {
+      return [];
+    }
+
+    const labels = [];
+    const starLabels = [...(customSpace?.stars || [])]
+      .slice(-8)
+      .map((star) => ({
+        id: `custom-star-${star.id}`,
+        text: star.name,
+        position: [star.x, star.y + 0.45, star.z],
+        color: "#eef4ff",
+        scale: 1.65
+      }));
+    labels.push(...starLabels);
+
+    (customSpace?.constellations || []).forEach((constellation) => {
+      if (!constellation.starIds.length) {
+        return;
+      }
+      const stars = constellation.starIds
+        .map((starId) => customSpace.stars.find((star) => star.id === starId))
+        .filter(Boolean);
+      if (!stars.length) {
+        return;
+      }
+      const center = stars.reduce(
+        (current, star) => ({
+          x: current.x + star.x,
+          y: current.y + star.y,
+          z: current.z + star.z
+        }),
+        { x: 0, y: 0, z: 0 }
+      );
+      labels.push({
+        id: `custom-constellation-${constellation.id}`,
+        text: constellation.name,
+        position: [center.x / stars.length, center.y / stars.length + 0.95, center.z / stars.length],
+        color: constellation.color,
+        scale: 1.9
+      });
+    });
+
+    return labels;
+  }, [customSpace, showLabels]);
 
   useFrame((_, delta) => {
-    const targetTiltX = -pointer.y * 0.018;
-    const targetYawDrift = pointer.x * 0.024;
-    const targetCameraX = pointer.x * 1.05;
-    const targetCameraY = pointer.y * 0.48;
-    const targetLookX = pointer.x * 4.2;
-    const targetLookY = pointer.y * 1.55;
+    const targetTiltX = spaceMode ? Math.sin(performance.now() * 0.00022) * 0.026 : observerMode ? -pointer.y * 0.034 : -pointer.y * 0.018;
+    const targetYawDrift = spaceMode ? Math.cos(performance.now() * 0.00016) * 0.03 : observerMode ? pointer.x * 0.05 : pointer.x * 0.024;
+    const targetCameraX = spaceMode ? Math.sin(performance.now() * 0.00011) * 1.25 : observerMode ? pointer.x * 0.42 : pointer.x * 1.05;
+    const targetCameraY = spaceMode ? Math.cos(performance.now() * 0.00017) * 0.58 : observerMode ? 0.48 + pointer.y * 0.28 : pointer.y * 0.48;
+    const targetCameraZ = spaceMode ? -1.15 : observerMode ? -0.2 : 0;
+    const targetLookX = spaceMode ? Math.sin(performance.now() * 0.00014) * 4.8 : observerMode ? pointer.x * 1.6 : pointer.x * 4.2;
+    const targetLookY = spaceMode ? Math.cos(performance.now() * 0.00013) * 1.25 : observerMode ? 2.1 + pointer.y * 1.1 : pointer.y * 1.55;
+    const targetLookZ = spaceMode ? -12.6 : observerMode ? -13 : -12.2;
 
     if (groupRef.current) {
       if (autoRotate) {
-        groupRef.current.rotation.y += delta * 0.0045;
+        groupRef.current.rotation.y += delta * (spaceMode ? 0.012 : observerMode ? 0.009 : 0.0045);
       }
-      rotationAnchor.current.x = THREE.MathUtils.damp(rotationAnchor.current.x, targetTiltX, 3.8, delta);
-      rotationAnchor.current.y = THREE.MathUtils.damp(rotationAnchor.current.y, targetYawDrift, 3.4, delta);
+      rotationAnchor.current.x = THREE.MathUtils.damp(rotationAnchor.current.x, targetTiltX, spaceMode ? 2.2 : 3.8, delta);
+      rotationAnchor.current.y = THREE.MathUtils.damp(rotationAnchor.current.y, targetYawDrift, spaceMode ? 2 : 3.4, delta);
       groupRef.current.rotation.x = rotationAnchor.current.x;
       groupRef.current.rotation.y += rotationAnchor.current.y * delta;
     }
 
-    cameraAnchor.current.x = THREE.MathUtils.damp(cameraAnchor.current.x, targetCameraX, 3.9, delta);
-    cameraAnchor.current.y = THREE.MathUtils.damp(cameraAnchor.current.y, targetCameraY, 3.9, delta);
+    cameraAnchor.current.x = THREE.MathUtils.damp(cameraAnchor.current.x, targetCameraX, spaceMode ? 2.4 : 3.9, delta);
+    cameraAnchor.current.y = THREE.MathUtils.damp(cameraAnchor.current.y, targetCameraY, spaceMode ? 2.4 : 3.9, delta);
+    cameraAnchor.current.z = THREE.MathUtils.damp(cameraAnchor.current.z, targetCameraZ, spaceMode ? 2.6 : 4.2, delta);
     lookAnchor.current.x = THREE.MathUtils.damp(lookAnchor.current.x, targetLookX, 4.1, delta);
     lookAnchor.current.y = THREE.MathUtils.damp(lookAnchor.current.y, targetLookY, 4.1, delta);
+    lookAnchor.current.z = THREE.MathUtils.damp(lookAnchor.current.z, targetLookZ, 4.2, delta);
 
     camera.position.x = cameraAnchor.current.x;
     camera.position.y = cameraAnchor.current.y;
-    camera.position.z = 14.4;
-    camera.lookAt(lookAnchor.current.x, lookAnchor.current.y, -12.2);
+    camera.position.z = (spaceMode ? 15.1 : observerMode ? 16.8 : 14.4) + cameraAnchor.current.z;
+    camera.lookAt(lookAnchor.current.x, lookAnchor.current.y, lookAnchor.current.z);
   });
 
   return (
@@ -117,9 +207,11 @@ function CreativeSpaceContents({ customSpace, selectedTarget, onSelectTarget, au
       <ambientLight intensity={0.42} />
       <pointLight position={[0, 5, 12]} intensity={0.7} color="#b8d2ff" />
       <group ref={groupRef}>
-        <MilkyWayBand />
-        <DeepSkyField />
-        <SpaceDepthField />
+        <MilkyWayBand viewMode={viewMode} />
+        <DeepSkyField viewMode={viewMode} />
+        {spaceMode ? <SpaceDepthField /> : null}
+        {showGuides ? <GuideGrid /> : null}
+        {showGuides && !spaceMode ? <HorizonRing dictionary={dictionary} language={language} /> : null}
         <CreativePlacementPlane creativeTool={creativeTool} onCreativeSpaceClick={onCreativeSpaceClick} />
         <CreativeConstellationLines customSpace={customSpace} />
         {customSpace?.stars.map((star) => (
@@ -138,6 +230,9 @@ function CreativeSpaceContents({ customSpace, selectedTarget, onSelectTarget, au
             onSelectTarget={onSelectTarget}
           />
         ))}
+        {labelData.map((label) => (
+          <TextSprite key={label.id} {...label} />
+        ))}
       </group>
     </>
   );
@@ -153,6 +248,8 @@ function SceneContents({
   showGuides,
   showConstellations,
   autoRotate,
+  atmosphereStrength,
+  starGlowStrength,
   viewMode,
   focusedConstellation,
   drawMode,
@@ -231,14 +328,14 @@ function SceneContents({
     const observerMode = viewMode === "observer";
     const driftA = clock.elapsedTime * 0.085;
     const driftB = clock.elapsedTime * 0.052;
-    const targetTiltX = spaceMode ? Math.sin(driftB) * 0.028 : observerMode ? -pointer.y * 0.035 : -pointer.y * 0.016;
-    const targetYawDrift = spaceMode ? Math.sin(driftA) * 0.035 : observerMode ? pointer.x * 0.055 : pointer.x * 0.032;
-    const targetCameraX = spaceMode ? Math.sin(driftA) * 1.35 : observerMode ? pointer.x * 0.38 : pointer.x * 0.86;
-    const targetCameraY = spaceMode ? Math.cos(driftB) * 0.62 : observerMode ? 0.55 + pointer.y * 0.34 : pointer.y * 0.12;
-    const targetCameraZ = spaceMode ? -1.62 + Math.sin(driftA * 0.7) * 0.18 : observerMode ? -0.28 - Math.abs(pointer.x) * 0.08 : -0.16;
-    const targetLookX = spaceMode ? Math.sin(driftA * 0.8) * 5.2 : observerMode ? pointer.x * 1.7 : pointer.x * 3.2;
-    const targetLookY = spaceMode ? Math.cos(driftB * 1.15) * 1.65 : observerMode ? 2.9 + pointer.y * 1.4 : 0.65 + pointer.y * 0.55;
-    const targetLookZ = spaceMode ? -11.4 + Math.sin(driftB) * 0.45 : observerMode ? -13.6 : -12.2;
+    const targetTiltX = spaceMode ? Math.sin(driftB) * 0.018 : observerMode ? -0.12 - pointer.y * 0.028 : -pointer.y * 0.01;
+    const targetYawDrift = spaceMode ? Math.sin(driftA) * 0.022 : observerMode ? pointer.x * 0.03 : pointer.x * 0.018;
+    const targetCameraX = spaceMode ? Math.sin(driftA) * 0.55 : observerMode ? pointer.x * 0.18 : pointer.x * 0.26;
+    const targetCameraY = spaceMode ? Math.cos(driftB) * 0.32 : observerMode ? -1.1 + pointer.y * 0.18 : -0.15 + pointer.y * 0.08;
+    const targetCameraZ = spaceMode ? -11.8 + Math.sin(driftA * 0.7) * 0.18 : observerMode ? -0.65 : -0.42;
+    const targetLookX = spaceMode ? Math.sin(driftA * 0.8) * 2.2 : observerMode ? pointer.x * 0.9 : pointer.x * 1.45;
+    const targetLookY = spaceMode ? Math.cos(driftB * 1.15) * 0.85 : observerMode ? 1.8 + pointer.y * 0.75 : 2.35 + pointer.y * 0.46;
+    const targetLookZ = spaceMode ? 0 : observerMode ? -13.4 : -14.6;
 
     if (groupRef.current) {
       if (autoRotate) {
@@ -260,7 +357,7 @@ function SceneContents({
 
     camera.position.x = cameraAnchor.current.x;
     camera.position.y = cameraAnchor.current.y;
-    camera.position.z = (spaceMode ? 15.6 : 18) + cameraAnchor.current.z;
+    camera.position.z = (spaceMode ? 13.7 : observerMode ? 7.2 : 9.4) + cameraAnchor.current.z;
     camera.lookAt(lookAnchor.current.x, lookAnchor.current.y, lookAnchor.current.z);
   });
 
@@ -271,9 +368,9 @@ function SceneContents({
       <pointLight position={[-12, -4, -8]} intensity={0.25} color="#ffbf8a" />
       <group ref={groupRef}>
         <MilkyWayBand viewMode={viewMode} />
-        <DeepSkyField viewMode={viewMode} />
-        {viewMode === "space" ? <SpaceDepthField /> : null}
-        <BackgroundStarField stars={projectedStars} focusedConstellation={focusedConstellation} />
+        <DeepSkyField viewMode={viewMode} atmosphereStrength={atmosphereStrength} />
+        {viewMode === "space" ? <SpaceDepthField atmosphereStrength={atmosphereStrength} /> : null}
+        <BackgroundStarField stars={projectedStars} focusedConstellation={focusedConstellation} starGlowStrength={starGlowStrength} />
         {showGuides ? <GuideGrid /> : null}
         {showGuides ? <HorizonRing dictionary={dictionary} language={language} /> : null}
         {showConstellations ? <ConstellationLines lines={scene.lines} stars={projectedStars} focusedConstellation={focusedConstellation} viewMode={viewMode} /> : null}
@@ -285,6 +382,7 @@ function SceneContents({
                 star={star}
                 dimmed={focusedConstellation !== "all" && star.constellation !== focusedConstellation}
                 sketched={customSketchStarIds.includes(star.id)}
+                starGlowStrength={starGlowStrength}
               />
             ))
           : featuredStars.map((star) => (
@@ -309,7 +407,7 @@ function SceneContents({
   );
 }
 
-function BackgroundStarField({ stars, focusedConstellation }) {
+function BackgroundStarField({ stars, focusedConstellation, starGlowStrength = 0.8 }) {
   const materialRef = useRef(null);
   const geometry = useMemo(() => {
     const positions = [];
@@ -353,7 +451,7 @@ function BackgroundStarField({ stars, focusedConstellation }) {
         transparent: true,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
-        uniforms: { time: { value: 0 } },
+        uniforms: { time: { value: 0 }, glowStrength: { value: starGlowStrength } },
         vertexShader: `
           attribute float size;
           attribute float alpha;
@@ -372,6 +470,7 @@ function BackgroundStarField({ stars, focusedConstellation }) {
         `,
         fragmentShader: `
           uniform float time;
+          uniform float glowStrength;
           varying vec3 vColor;
           varying float vAlpha;
           varying float vTwinkle;
@@ -381,24 +480,25 @@ function BackgroundStarField({ stars, focusedConstellation }) {
             float glow = smoothstep(0.52, 0.0, dist);
             float core = smoothstep(0.18, 0.0, dist);
             float pulse = 0.86 + sin(time * (0.34 + vTwinkle * 0.42) + vTwinkle * 24.0) * 0.14;
-            gl_FragColor = vec4(vColor * (0.55 + core * 1.6) * pulse, (glow * 0.55 + core * 0.7) * vAlpha * pulse);
+            gl_FragColor = vec4(vColor * (0.48 + core * 1.75 * glowStrength) * pulse, (glow * 0.4 + core * 0.9 * glowStrength) * vAlpha * pulse);
           }
         `,
         vertexColors: true
       }),
-    []
+    [starGlowStrength]
   );
 
   useFrame(({ clock }) => {
     if (materialRef.current?.material?.uniforms?.time) {
       materialRef.current.material.uniforms.time.value = clock.elapsedTime;
+      materialRef.current.material.uniforms.glowStrength.value = starGlowStrength;
     }
   });
 
   return <points geometry={geometry} material={material} ref={materialRef} frustumCulled={false} />;
 }
 
-function PassiveStarGlow({ star, dimmed, sketched }) {
+function PassiveStarGlow({ star, dimmed, sketched, starGlowStrength = 0.8 }) {
   const haloRef = useRef(null);
   const spriteMaterial = useMemo(
     () =>
@@ -409,7 +509,7 @@ function PassiveStarGlow({ star, dimmed, sketched }) {
       }),
     [sketched, star.color]
   );
-  const radius = star.size * (sketched ? 1.75 : dimmed ? 1.05 : 1.48);
+  const radius = star.size * (sketched ? 1.75 : dimmed ? 1.05 : 1.48) * (0.72 + starGlowStrength * 0.62);
   const pulseSeed = useMemo(() => Number.parseInt(String(star.id).replace(/\D/g, "").slice(-4) || "13", 10) * 0.017, [star.id]);
 
   useFrame(({ clock }) => {
@@ -418,7 +518,7 @@ function PassiveStarGlow({ star, dimmed, sketched }) {
     }
     const pulse = 1 + Math.sin(clock.elapsedTime * 0.62 + pulseSeed) * 0.07;
     haloRef.current.scale.setScalar(pulse);
-    haloRef.current.material.opacity = 0.72 + Math.sin(clock.elapsedTime * 0.48 + pulseSeed) * 0.08;
+    haloRef.current.material.opacity = (0.38 + starGlowStrength * 0.46) + Math.sin(clock.elapsedTime * 0.48 + pulseSeed) * 0.08;
   });
 
   return <sprite ref={haloRef} material={spriteMaterial} position={[star.x, star.y, star.z]} scale={[radius * 5.8, radius * 5.8, 1]} />;
@@ -447,13 +547,24 @@ function CreativeConstellationLines({ customSpace }) {
     const byId = new Map((customSpace?.stars || []).map((star) => [star.id, star]));
     return (customSpace?.constellations || []).map((constellation) => {
       const points = [];
-      for (let index = 1; index < constellation.starIds.length; index += 1) {
-        const from = byId.get(constellation.starIds[index - 1]);
-        const to = byId.get(constellation.starIds[index]);
-        if (!from || !to) {
-          continue;
+      if (Array.isArray(constellation.segments) && constellation.segments.length > 0) {
+        for (const segment of constellation.segments) {
+          const from = byId.get(segment[0]);
+          const to = byId.get(segment[1]);
+          if (!from || !to) {
+            continue;
+          }
+          pushLinePath(points, from, to, true);
         }
-        pushLinePath(points, from, to, true);
+      } else {
+        for (let index = 1; index < constellation.starIds.length; index += 1) {
+          const from = byId.get(constellation.starIds[index - 1]);
+          const to = byId.get(constellation.starIds[index]);
+          if (!from || !to) {
+            continue;
+          }
+          pushLinePath(points, from, to, true);
+        }
       }
 
       const geometry = new THREE.BufferGeometry();
@@ -759,36 +870,39 @@ function projectSkyPosition(star, viewMode) {
   const az = (star.azimuth * Math.PI) / 180;
   const altitudeRatio = Math.max(0, star.altitude) / 90;
   const azWrapped = Math.atan2(Math.sin(az), Math.cos(az));
+  const seed = Number.parseInt(String(star.id).replace(/\D/g, "").slice(-4) || "11", 10);
   let x;
   let y;
   let z;
 
   if (viewMode === "space") {
-    const radius = 18.8 + Math.max(0, 4.3 - star.magnitude) * 0.22;
-    const elevation = (altitudeRatio - 0.5) * Math.PI * 0.92;
+    const radius = 20.8 + Math.max(0, 4.6 - star.magnitude) * 0.42 + ((seed % 19) - 9) * 0.14;
+    const elevation = (altitudeRatio - 0.5) * Math.PI * 1.28;
     const direction = new THREE.Vector3(
       Math.sin(azWrapped) * Math.cos(elevation),
       Math.sin(elevation),
       -Math.cos(azWrapped) * Math.cos(elevation)
     ).normalize();
-    const seed = Number.parseInt(String(star.id).replace(/\D/g, "").slice(-4) || "11", 10);
-    const drift = ((seed % 23) - 11) * 0.045;
-    x = direction.x * radius * 1.15 + drift;
-    y = direction.y * radius * 0.95;
-    z = -10.4 + direction.z * radius * 0.62 - Math.abs(direction.x) * 0.85;
+    const swirlX = Math.sin(seed * 0.73) * 0.58;
+    const swirlY = Math.cos(seed * 1.11) * 0.36;
+    const swirlZ = Math.sin(seed * 0.37) * 0.58;
+    x = direction.x * radius * 1.05 + swirlX;
+    y = direction.y * radius * 1.02 + swirlY;
+    z = direction.z * radius * 0.88 + swirlZ;
   } else if (viewMode === "panorama") {
-    const horizonSpread = 18.8;
-    const altitudeLift = Math.pow(altitudeRatio, 0.82);
-    x = (azWrapped / Math.PI) * horizonSpread;
-    y = -1.8 + altitudeLift * 12.8;
-    z = -14.4 - Math.cos(altitudeRatio * Math.PI) * 0.8 - Math.abs(azWrapped / Math.PI) * 1.45;
+    const horizontalRatio = azWrapped / Math.PI;
+    const horizonSpread = 22.5;
+    const altitudeLift = Math.pow(altitudeRatio, 0.72);
+    const edgeFalloff = Math.pow(Math.abs(horizontalRatio), 1.35);
+    x = horizontalRatio * horizonSpread;
+    y = -1.3 + altitudeLift * 11.6 + (1 - edgeFalloff) * 0.9;
+    z = -13.8 - edgeFalloff * 4.8 - (1 - altitudeLift) * 1.2;
   } else {
     const altitude = altitudeRatio * Math.PI * 0.5;
-    const canopyRadius = 17.2;
-    const horizontalRadius = canopyRadius * Math.cos(altitude) * 1.38;
-    x = Math.sin(az) * horizontalRadius;
-    y = -0.9 + Math.sin(altitude) * 14.8;
-    z = -16.1 + Math.cos(az) * horizontalRadius * 0.18 - Math.sin(altitude) * 2.8;
+    const horizontalRadius = THREE.MathUtils.lerp(15.2, 2.8, altitudeRatio);
+    x = Math.sin(azWrapped) * horizontalRadius * 1.1;
+    y = -2.8 + Math.sin(altitude) * 13.9;
+    z = -14.8 + Math.cos(azWrapped) * horizontalRadius * 0.92 - altitudeRatio * 1.45;
   }
 
   return {
@@ -871,8 +985,9 @@ function GuideGrid() {
   );
 }
 
-function SpaceDepthField() {
+function SpaceDepthField({ atmosphereStrength = 0.7 }) {
   const fieldRef = useRef(null);
+  const pointTexture = useMemo(() => buildPointTexture(), []);
   const particles = useMemo(() => {
     const positions = [];
     const colors = [];
@@ -910,12 +1025,23 @@ function SpaceDepthField() {
 
   return (
     <points ref={fieldRef} geometry={particles}>
-      <pointsMaterial size={0.075} sizeAttenuation vertexColors transparent opacity={0.28} depthWrite={false} />
+      <pointsMaterial
+        size={0.075}
+        sizeAttenuation
+        vertexColors
+        transparent
+        opacity={0.1 + atmosphereStrength * 0.26}
+        depthWrite={false}
+        map={pointTexture}
+        alphaMap={pointTexture}
+        alphaTest={0.08}
+      />
     </points>
   );
 }
 
-function MilkyWayBand() {
+function MilkyWayBand({ viewMode = "space", atmosphereStrength = 0.7 }) {
+  const pointTexture = useMemo(() => buildPointTexture(), []);
   const particles = useMemo(() => {
     const positions = [];
     const colors = [];
@@ -945,12 +1071,23 @@ function MilkyWayBand() {
 
   return (
     <points geometry={particles} rotation={[-0.18, 0.32, 0.15]}>
-      <pointsMaterial size={0.11} sizeAttenuation vertexColors transparent opacity={0.16} depthWrite={false} />
+      <pointsMaterial
+        size={viewMode === "space" ? 0.11 : 0.095}
+        sizeAttenuation
+        vertexColors
+        transparent
+        opacity={(viewMode === "space" ? 0.08 : 0.05) + atmosphereStrength * (viewMode === "space" ? 0.12 : 0.09)}
+        depthWrite={false}
+        map={pointTexture}
+        alphaMap={pointTexture}
+        alphaTest={0.08}
+      />
     </points>
   );
 }
 
-function DeepSkyField() {
+function DeepSkyField({ viewMode = "space", atmosphereStrength = 0.7 }) {
+  const pointTexture = useMemo(() => buildPointTexture(), []);
   const particles = useMemo(() => {
     const positions = [];
     const colors = [];
@@ -977,7 +1114,17 @@ function DeepSkyField() {
 
   return (
     <points geometry={particles}>
-      <pointsMaterial size={0.085} sizeAttenuation vertexColors transparent opacity={0.42} depthWrite={false} />
+      <pointsMaterial
+        size={viewMode === "space" ? 0.085 : 0.072}
+        sizeAttenuation
+        vertexColors
+        transparent
+        opacity={(viewMode === "space" ? 0.16 : 0.12) + atmosphereStrength * (viewMode === "space" ? 0.3 : 0.22)}
+        depthWrite={false}
+        map={pointTexture}
+        alphaMap={pointTexture}
+        alphaTest={0.08}
+      />
     </points>
   );
 }

@@ -189,6 +189,9 @@ export const translations = {
         volume: "Ambient volume",
         volumeShort: "Volume"
       },
+      zoom: "Zoom",
+      zoomIn: "Zoom in",
+      zoomOut: "Zoom out",
       controls: "Viewer controls",
       sketchControls: "Sketch controls",
       tonightMood: "Tonight's story",
@@ -463,6 +466,9 @@ export const translations = {
         volume: "앰비언트 볼륨",
         volumeShort: "볼륨"
       },
+      zoom: "줌",
+      zoomIn: "줌인",
+      zoomOut: "줌아웃",
       controls: "뷰어 제어",
       sketchControls: "스케치 제어",
       tonightMood: "오늘 밤의 분위기",

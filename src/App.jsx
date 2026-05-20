@@ -232,6 +232,7 @@ export function App() {
   const [atmosphereStrength, setAtmosphereStrength] = useState(0.7);
   const [starGlowStrength, setStarGlowStrength] = useState(0.8);
   const [viewMode, setViewMode] = useState("space");
+  const [zoomLevel, setZoomLevel] = useState(0.52);
   const [focusedConstellation, setFocusedConstellation] = useState("all");
   const [constellationSearch, setConstellationSearch] = useState("");
   const [trackConstellation, setTrackConstellation] = useState(false);
@@ -892,6 +893,10 @@ export function App() {
     setObservedAt((current) => shiftObservedTimestamp(current, hours));
   }
 
+  function changeZoom(delta) {
+    setZoomLevel((current) => Math.min(1, Math.max(0, Number((current + delta).toFixed(2)))));
+  }
+
   return (
     <div className="planetarium-app">
       <header className="topbar">
@@ -1383,6 +1388,7 @@ export function App() {
             atmosphereStrength={atmosphereStrength}
             starGlowStrength={starGlowStrength}
             viewMode={viewMode}
+            zoomLevel={zoomLevel}
             focusedConstellation={currentPage === "watch" ? focusedConstellation : "all"}
             trackConstellation={currentPage === "watch" ? trackConstellation : false}
             drawMode={currentPage === "sketch"}
@@ -1426,6 +1432,26 @@ export function App() {
             </div>
           ) : null}
           <div className="viewer-overlay">
+            <label className="overlay-zoom">
+              <span>{dictionary.viewer.zoom}</span>
+              <div className="overlay-zoom-controls">
+                <button type="button" className="overlay-button" onClick={() => changeZoom(-0.1)}>
+                  {dictionary.viewer.zoomOut}
+                </button>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={zoomLevel}
+                  aria-label={dictionary.viewer.zoom}
+                  onChange={(event) => setZoomLevel(Number(event.target.value))}
+                />
+                <button type="button" className="overlay-button" onClick={() => changeZoom(0.1)}>
+                  {dictionary.viewer.zoomIn}
+                </button>
+              </div>
+            </label>
             <label className="overlay-volume">
               <span>{dictionary.viewer.ambient.volumeShort}</span>
               <input

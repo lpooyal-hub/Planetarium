@@ -49,6 +49,7 @@ export function PlanetariumCanvas({
   atmosphereStrength = 0.7,
   starGlowStrength = 0.8,
   viewMode,
+  zoomLevel = 0.52,
   focusedConstellation,
   trackConstellation = false,
   drawMode,
@@ -75,6 +76,7 @@ export function PlanetariumCanvas({
           showGuides={showGuides}
           showLabels={showLabels}
           viewMode={viewMode}
+          zoomLevel={zoomLevel}
           language={language}
           dictionary={dictionary}
           creativeTool={creativeTool}
@@ -94,6 +96,7 @@ export function PlanetariumCanvas({
           atmosphereStrength={atmosphereStrength}
           starGlowStrength={starGlowStrength}
           viewMode={viewMode}
+          zoomLevel={zoomLevel}
           focusedConstellation={focusedConstellation}
           trackConstellation={trackConstellation}
           drawMode={drawMode}
@@ -112,6 +115,7 @@ function CreativeSpaceContents({
   showGuides,
   showLabels,
   viewMode,
+  zoomLevel,
   language,
   dictionary,
   creativeTool,
@@ -200,7 +204,9 @@ function CreativeSpaceContents({
 
     camera.position.x = cameraAnchor.current.x;
     camera.position.y = cameraAnchor.current.y;
-    camera.position.z = (spaceMode ? 15.1 : observerMode ? 16.8 : 14.4) + cameraAnchor.current.z;
+    const baseDistance = spaceMode ? 15.1 : observerMode ? 16.8 : 14.4;
+    const zoomMultiplier = THREE.MathUtils.lerp(1.28, 0.72, zoomLevel);
+    camera.position.z = baseDistance * zoomMultiplier + cameraAnchor.current.z;
     camera.lookAt(lookAnchor.current.x, lookAnchor.current.y, lookAnchor.current.z);
   });
 
@@ -253,6 +259,7 @@ function SceneContents({
   atmosphereStrength,
   starGlowStrength,
   viewMode,
+  zoomLevel,
   focusedConstellation,
   trackConstellation,
   drawMode,
@@ -372,7 +379,10 @@ function SceneContents({
 
     camera.position.x = cameraAnchor.current.x;
     camera.position.y = cameraAnchor.current.y;
-    camera.position.z = (spaceMode ? 13.7 : observerMode ? 7.2 : 9.4) + cameraAnchor.current.z;
+    const baseDistance = spaceMode ? 13.7 : observerMode ? 7.2 : 9.4;
+    const zoomMultiplier = THREE.MathUtils.lerp(1.34, 0.76, zoomLevel);
+    const trackingOffset = trackedCenter ? (spaceMode ? 2.8 : observerMode ? 2.1 : 1.8) : 0;
+    camera.position.z = baseDistance * zoomMultiplier + cameraAnchor.current.z + trackingOffset;
     camera.lookAt(lookAnchor.current.x, lookAnchor.current.y, lookAnchor.current.z);
   });
 

@@ -403,6 +403,36 @@ input[type="range"] {
   font-weight: 650;
 }
 
+.overlay-zoom {
+  display: grid;
+  gap: 7px;
+  min-width: 220px;
+  padding: 9px 11px;
+  border: 1px solid rgba(173, 211, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(5, 9, 16, 0.58);
+  color: #b4c2d5;
+  font-size: 0.76rem;
+  backdrop-filter: blur(10px);
+}
+
+.overlay-zoom span {
+  color: #8d9cb0;
+  font-weight: 650;
+}
+
+.overlay-zoom-controls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.overlay-zoom-controls input {
+  width: 100%;
+  accent-color: #ffcf70;
+}
+
 .time-jump-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -705,5 +735,9 @@ input[type="range"] {
   .overlay-volume {
     width: 100%;
     max-width: 260px;
+  }
+
+  .overlay-zoom {
+    width: 100%;
   }
 }

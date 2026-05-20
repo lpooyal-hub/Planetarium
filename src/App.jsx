@@ -6,6 +6,7 @@ import { getInitialLanguage, translations } from "./data/i18n.js";
 const SKETCH_STORAGE_KEY = "planetarium-custom-space-scenes";
 const AMBIENT_STORAGE_KEY = "planetarium-ambient-preference";
 const AMBIENT_VOLUME_STORAGE_KEY = "planetarium-ambient-volume";
+const FAVORITE_CONSTELLATIONS_STORAGE_KEY = "planetarium-favorite-constellations";
 const DEFAULT_AMBIENT_VOLUME = 0.9;
 
 const planetPresets = [
@@ -22,6 +23,15 @@ function getInitialAmbientVolume() {
   }
 
   return DEFAULT_AMBIENT_VOLUME;
+}
+
+function getInitialFavoriteConstellations() {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(FAVORITE_CONSTELLATIONS_STORAGE_KEY) || "[]");
+    return Array.isArray(saved) ? saved.filter((item) => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 function createAmbientSoundscape(initialVolume = DEFAULT_AMBIENT_VOLUME) {
@@ -258,6 +268,7 @@ export function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [ambientEnabled, setAmbientEnabled] = useState(true);
   const [ambientVolume, setAmbientVolume] = useState(getInitialAmbientVolume);
+  const [favoriteConstellations, setFavoriteConstellations] = useState(getInitialFavoriteConstellations);
   const dictionary = translations[language];
 
   useEffect(() => {
@@ -383,6 +394,10 @@ export function App() {
   }, [savedSketches]);
 
   useEffect(() => {
+    window.localStorage.setItem(FAVORITE_CONSTELLATIONS_STORAGE_KEY, JSON.stringify(favoriteConstellations));
+  }, [favoriteConstellations]);
+
+  useEffect(() => {
     ambientVolumeRef.current = ambientVolume;
     window.localStorage.setItem(AMBIENT_VOLUME_STORAGE_KEY, String(ambientVolume));
     ambientSoundRef.current?.setVolume(ambientVolume);
@@ -504,6 +519,7 @@ export function App() {
   const activeConstellationName = activeConstellationKey ? dictionary.constellations?.[activeConstellationKey]?.[language] || activeConstellationKey : null;
   const activeConstellationStory =
     (activeConstellationKey && dictionary.viewer.constellationMoods?.[activeConstellationKey]?.[language]) || dictionary.viewer.constellationFallback;
+  const activeConstellationIsFavorite = Boolean(activeConstellationKey && favoriteConstellations.includes(activeConstellationKey));
   const sketchViewDescription = dictionary.viewer.viewModeDescriptions[viewMode];
   const observerMomentLabel = useMemo(() => {
     const date = new Date(observedAt);
@@ -549,6 +565,10 @@ export function App() {
       .slice(0, 10)
       .map((item) => item.name);
   }, [sceneState.data?.stars, viewMode]);
+  const visibleFavoriteConstellations = useMemo(
+    () => favoriteConstellations.filter((name) => visibleConstellations.includes(name)),
+    [favoriteConstellations, visibleConstellations]
+  );
 
   useEffect(() => {
     if (!visibleConstellations.length) {
@@ -593,6 +613,13 @@ export function App() {
         label: language === "ko" ? "현재 위치" : "Live location"
       });
     });
+  }
+
+  function toggleFavoriteConstellation(name) {
+    if (!name || name === "all") {
+      return;
+    }
+    setFavoriteConstellations((current) => (current.includes(name) ? current.filter((item) => item !== name) : [name, ...current]));
   }
 
   function selectTarget(target) {
@@ -1280,6 +1307,15 @@ export function App() {
                     {language === "ko" ? "선택 해제" : "Clear selection"}
                   </button>
                 ) : null}
+                {activeConstellationKey ? (
+                  <button
+                    type="button"
+                    className={`focus-chip ${activeConstellationIsFavorite ? "is-active" : ""}`}
+                    onClick={() => toggleFavoriteConstellation(activeConstellationKey)}
+                  >
+                    {activeConstellationIsFavorite ? dictionary.viewer.removeFavorite : dictionary.viewer.addFavorite}
+                  </button>
+                ) : null}
                 <div className="constellation-list focus-list">
                   <button
                     type="button"
@@ -1299,6 +1335,25 @@ export function App() {
                     </button>
                   ))}
                 </div>
+              </section>
+              <section>
+                <p className="eyebrow">{dictionary.viewer.favoriteConstellations}</p>
+                {visibleFavoriteConstellations.length ? (
+                  <div className="constellation-list focus-list">
+                    {visibleFavoriteConstellations.map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        className={`focus-chip ${focusedConstellation === name ? "is-active" : ""}`}
+                        onClick={() => setFocusedConstellation(name)}
+                      >
+                        {dictionary.constellations?.[name]?.[language] || name}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="helper-copy">{dictionary.viewer.noFavoriteConstellations}</p>
+                )}
               </section>
               <section className="story-card">
                 <p className="eyebrow">{dictionary.viewer.tonightMood}</p>

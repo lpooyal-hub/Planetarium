@@ -47,7 +47,7 @@ Finish the night-sky theme to a level where it feels polished, consistent, and r
 - [x] move, scale, spread, tighten, and rotate imported constellations
 - [x] duplicate a constellation
 - [x] drag individual stars directly
-- [ ] save favorite sketch layouts
+- [x] save favorite sketch layouts
 - [ ] make custom constellations easier to rename and curate
 
 ### Stage 4: Ambience

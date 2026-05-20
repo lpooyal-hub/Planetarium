@@ -280,7 +280,11 @@ export function App() {
     try {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed)) {
-        setSavedSketches(parsed.filter((scene) => Array.isArray(scene.stars) && Array.isArray(scene.planets) && Array.isArray(scene.constellations)));
+        setSavedSketches(
+          parsed
+            .filter((scene) => Array.isArray(scene.stars) && Array.isArray(scene.planets) && Array.isArray(scene.constellations))
+            .map((scene) => ({ favorite: false, ...scene }))
+        );
       }
     } catch (error) {
       console.warn("Failed to restore saved sketches:", error);
@@ -507,6 +511,16 @@ export function App() {
     [customSpace.planets, selectedTarget]
   );
   const activeSketchName = sketchName.trim() || customSpace.name || dictionary.viewer.draftSketch;
+  const sortedSavedSketches = useMemo(
+    () =>
+      [...savedSketches].sort((left, right) => {
+        if (left.favorite === right.favorite) {
+          return 0;
+        }
+        return left.favorite ? -1 : 1;
+      }),
+    [savedSketches]
+  );
   const activeConstellationKey = useMemo(() => {
     if (focusedConstellation !== "all") {
       return focusedConstellation;
@@ -721,6 +735,12 @@ export function App() {
     if (activeSketchId === sketchId) {
       setActiveSketchId("draft");
     }
+  }
+
+  function toggleSketchFavorite(sketchId) {
+    setSavedSketches((current) =>
+      current.map((sketch) => (sketch.id === sketchId ? { ...sketch, favorite: !sketch.favorite } : sketch))
+    );
   }
 
   function addCustomConstellation() {
@@ -1999,7 +2019,7 @@ export function App() {
                   {savedSketches.length === 0 ? (
                     <p className="helper-copy">{dictionary.viewer.noSavedSketches}</p>
                   ) : (
-                    savedSketches.map((sketch) => (
+                    sortedSavedSketches.map((sketch) => (
                       <div key={sketch.id} className={`saved-sketch-card ${activeSketchId === sketch.id ? "is-active" : ""}`}>
                         <button type="button" className="saved-sketch-button" onClick={() => loadSketch(sketch.id)}>
                           <strong>{sketch.name}</strong>
@@ -2007,9 +2027,14 @@ export function App() {
                             {sketch.stars.length} {dictionary.viewer.customStars} / {sketch.planets.length} {dictionary.viewer.customPlanets}
                           </small>
                         </button>
-                        <button type="button" className="focus-chip" onClick={() => removeSketch(sketch.id)}>
-                          {dictionary.viewer.deleteSketch}
-                        </button>
+                        <div className="saved-sketch-actions">
+                          <button type="button" className={`focus-chip ${sketch.favorite ? "is-active" : ""}`} onClick={() => toggleSketchFavorite(sketch.id)}>
+                            {sketch.favorite ? dictionary.viewer.unpinSketch : dictionary.viewer.pinSketch}
+                          </button>
+                          <button type="button" className="focus-chip" onClick={() => removeSketch(sketch.id)}>
+                            {dictionary.viewer.deleteSketch}
+                          </button>
+                        </div>
                       </div>
                     ))
                   )}

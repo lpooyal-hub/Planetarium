@@ -707,6 +707,11 @@ input[type="range"] {
   color: var(--muted);
 }
 
+.saved-sketch-actions {
+  display: grid;
+  gap: 8px;
+}
+
 .scene-empty {
   display: grid;
   width: 100%;
